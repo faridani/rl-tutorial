@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>10 Amazing Reinforcement Learning Tutorials</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for a more elegant look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+    </style>
+</head>
+<body class="bg-white text-gray-800">
+
+    <div class="flex flex-col md:flex-row min-h-screen">
+        <!-- Left Navigation Pane -->
+        <aside class="w-full md:w-72 lg:w-80 bg-gray-50/75 border-r border-gray-200 p-6 md:p-8 md:sticky top-0 h-auto md:h-screen">
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">Reinforcement Learning</h1>
+            <p class="text-sm font-light text-gray-500 mb-8">A curated list of 10 amazing online tutorials.</p>
+            <nav>
+                <ul class="space-y-3">
+                    <!-- Navigation links will be populated by JS -->
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Right Content Pane -->
+        <main class="flex-1 p-6 md:p-10 lg:p-12">
+            <div id="tutorials-container" class="max-w-4xl mx-auto space-y-16">
+                <!-- Tutorial sections will be populated by JS -->
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const tutorials = [
+            {
+                id: 'deepmind-ucl',
+                title: 'DeepMind x UCL Reinforcement Learning Lectures',
+                description: "This is arguably one of the best and most up-to-date lecture series available. It's taught by leading researchers from DeepMind and University College London (UCL), covering both the theoretical foundations and the latest breakthroughs in the field.",
+                bestFor: 'A deep, comprehensive, and modern understanding of RL theory.',
+                format: 'YouTube Video Lectures & Slides',
+                link: 'https://www.youtube.com/playlist?list=PLqYmG7hTraZDNJre23vqCGIVpfZ_K2RZs'
+            },
+            {
+                id: 'hugging-face',
+                title: 'Hugging Face Deep RL Course 🤗',
+                description: 'An excellent hands-on course that teaches you to train agents in various environments using popular libraries. It emphasizes practical implementation and provides a strong community on Discord for support.',
+                bestFor: 'Practical, code-first learning and building a portfolio.',
+                format: 'Online Text & Code Notebooks',
+                link: 'https://huggingface.co/learn/deep-rl-course/unit0/introduction'
+            },
+            {
+                id: 'openai-spinning-up',
+                title: "OpenAI's Spinning Up in Deep RL",
+                description: 'A fantastic resource created by OpenAI to make deep RL more approachable. It offers clear explanations of core concepts, a well-organized code repository, and discussions on best practices in research.',
+                bestFor: 'Beginners who want a solid foundation with reliable code examples.',
+                format: 'Web-based Text & Code',
+                link: 'https://spinningup.openai.com/en/latest/'
+            },
+            {
+                id: 'sutton-barto-book',
+                title: "Sutton & Barto's 'Reinforcement Learning: An Introduction'",
+                description: "This isn't a video tutorial but the definitive textbook of the field, and the full PDF is available online for free. Nearly every RL course is based on this book. Working through its chapters is a tutorial in itself.",
+                bestFor: 'The most fundamental and authoritative understanding of RL concepts.',
+                format: 'Online Book (PDF)',
+                link: 'http://incompleteideas.net/book/the-book-2nd.html'
+            },
+            {
+                id: 'berkeley-cs294',
+                title: "UC Berkeley's CS 294-112: Deep Reinforcement Learning",
+                description: 'Taught by one of the leading RL researchers, Sergey Levine, this is a graduate-level course that goes deep into modern algorithms and their applications in areas like robotics.',
+                bestFor: 'An advanced, research-oriented perspective on deep RL.',
+                format: 'YouTube Video Lectures, Slides & Assignments',
+                link: 'https://rail.eecs.berkeley.edu/deeprlcourse/'
+            },
+            {
+                id: 'david-silver-ucl',
+                title: "David Silver's UCL Course on Reinforcement Learning",
+                description: 'This is the classic, older version of the DeepMind x UCL course. While some topics are more up-to-date in the newer series, these lectures are legendary for their clarity in explaining the core mathematical foundations of RL.',
+                bestFor: 'Mastering the fundamental theory and mathematics of RL.',
+                format: 'YouTube Video Lectures & Slides',
+                link: 'https://www.youtube.com/playlist?list=PLqYmG7hTraZDM-OYHWgPebj2MfCFzFobQ'
+            },
+            {
+                id: 'coursera-specialization',
+                title: "Coursera's Reinforcement Learning Specialization",
+                description: 'Offered by the University of Alberta, home to many top RL researchers (including one of the authors of the Sutton & Barto book). It’s a structured program that guides you from basic concepts to implementing modern algorithms.',
+                bestFor: 'A structured, self-paced learning path with exercises and quizzes.',
+                format: 'Videos, Readings & Graded Assignments',
+                link: 'https://www.coursera.org/specializations/reinforcement-learning'
+            },
+            {
+                id: 'lilian-weng-blog',
+                title: "Lilian Weng's Blog: 'A (Long) Peek into Reinforcement Learning'",
+                description: 'An incredibly detailed and well-written blog post series from a researcher at OpenAI. It serves as an excellent deep dive and summary of various RL topics, from Q-learning to policy gradients and beyond.',
+                bestFor: 'A detailed, text-based review and deep dive into specific algorithms.',
+                format: 'Blog Posts',
+                link: 'https://lilianweng.github.io/posts/2018-02-19-rl-overview/'
+            },
+            {
+                id: 'sentdex-python',
+                title: "Sentdex's 'Reinforcement Learning with Python' Series",
+                description: "A practical, code-focused YouTube series that builds your intuition by implementing algorithms from scratch to solve problems in simple environments like OpenAI Gym's MountainCar.",
+                bestFor: 'Visual learners who want to see RL algorithms built from the ground up.',
+                format: 'YouTube Video Tutorials',
+                link: 'https://www.youtube.com/playlist?list=PLQVvvaa0QuDezJFIOU5wDdfy4e9vdnx-7'
+            },
+            {
+                id: 'thomas-simonini-blog',
+                title: "Thomas Simonini's Blog Tutorials",
+                description: 'Thomas Simonini creates excellent, hands-on tutorials often published on freeCodeCamp and his blog. They are project-based, guiding you through implementing a specific algorithm (like PPO or DQN) to play a game.',
+                bestFor: 'Project-based learning and understanding specific algorithms by applying them.',
+                format: 'Blog Posts with Code',
+                link: 'https://www.thomassimonini.com/'
+            }
+        ];
+
+        const navUl = document.querySelector('aside nav ul');
+        const tutorialsContainer = document.getElementById('tutorials-container');
+
+        // Populate navigation and content
+        tutorials.forEach((tutorial, index) => {
+            // Create Nav Link
+            const li = document.createElement('li');
+            const a = document.createElement('a');
+            a.href = `#${tutorial.id}`;
+            a.textContent = `${index + 1}. ${tutorial.title}`;
+            a.className = 'font-light text-gray-600 hover:text-indigo-600 transition-colors duration-200 text-sm';
+            li.appendChild(a);
+            navUl.appendChild(li);
+
+            // Create Content Section
+            const section = document.createElement('section');
+            section.id = tutorial.id;
+            section.className = 'scroll-mt-24'; // Offset for scrolling
+            section.innerHTML = `
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">${tutorial.title}</h2>
+                <p class="text-gray-600 font-light leading-relaxed mb-6">${tutorial.description}</p>
+                <div class="text-sm space-y-2 mb-6">
+                    <p><strong class="font-semibold text-gray-700">Best for:</strong> <span class="font-light">${tutorial.bestFor}</span></p>
+                    <p><strong class="font-semibold text-gray-700">Format:</strong> <span class="font-light">${tutorial.format}</span></p>
+                </div>
+                <a href="${tutorial.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center bg-indigo-600 text-white font-medium py-2 px-5 rounded-lg hover:bg-indigo-700 transition-all duration-200 transform hover:scale-105 shadow-sm hover:shadow-md">
+                    Go to Tutorial
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                </a>
+            `;
+            tutorialsContainer.appendChild(section);
+        });
+
+        // Smooth scroll functionality
+        document.querySelectorAll('aside nav a').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>
