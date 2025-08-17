@@ -1,7 +1,7 @@
 # rl-tutorial
 Tutorials for Learning Reinforcement Learning for Smart People 
 
-Download the course material first and then use the following links to go through the material 
+Download the course material first and then use the following links to go through the material [download](https://github.com/faridani/rl-tutorial/archive/refs/heads/main.zip) 
 
 
 # Chapter 1 - Mathmetics for RL
