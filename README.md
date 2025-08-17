@@ -126,6 +126,32 @@ The following two lessons should prepare you for almost all of the math that you
 * Uncertainty & Ensembles
 
 
+# Part V — Structure & Constraints
+
+## Chapter 18. Hierarchical & Goal‑Conditioned RL
+* Options & Skills
+* Subgoal Discovery
+* Goal‑Conditioned Policies
+* Hindsight Experience Replay (HER)
+
+## Chapter 19. Offline & Batch RL
+* Off‑Policy Evaluation (IS, WIS, DR)
+* Batch‑Constrained Q‑Learning (BCQ)
+* BEAR & CQL
+* Distribution Shift & Conservatism
+
+## Chapter 20. Safe & Risk‑Sensitive RL
+* Constrained MDPs
+* Risk Measures (CVaR)
+* Robust MDPs
+* Shielding & Safety‑Critical Evaluation
+
+## Chapter 21. Multi‑Agent RL
+* Markov Games
+* Centralized Training, Decentralized Execution
+* Cooperation vs. Competition
+* Opponent Modeling & Equilibria
+
 # Part 4  
 
 * Q-Learning, SARSA, Double Q-Learning Lab [lab and tutorial](q-learning-lab.html)
