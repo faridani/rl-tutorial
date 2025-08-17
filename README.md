@@ -154,13 +154,13 @@ The following two lessons should prepare you for almost all of the math that you
 
 
 # Part VI — Imitation, Preferences & LLMs
-## Chapter 22. Imitation & Inverse RL
+## Chapter 22. Imitation & Inverse RL [visit lesson](part-6/chapter22.html) 
 * Behavior Cloning
 * DAgger & Dataset Aggregation
 * Maximum‑Entropy IRL
 * Adversarial Imitation (GAIL, AIRL)
 
-## Chapter 23. Preference‑Based RL & Alignment
+## Chapter 23. Preference‑Based RL & Alignment [visit lesson](part-6/chapter23.html) 
 * Reward Modeling from Human Feedback
 * RLHF with PPO
 * GRPO (Group Relative Policy Optimization)
