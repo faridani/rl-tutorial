@@ -108,7 +108,7 @@
         operations like addition, subtraction, multiplication and division can be performed using
         operators or their corresponding NumPy functions. Programiz lists these functions—
         <code>add</code>, <code>subtract</code>, <code>multiply</code>, <code>divide</code>, <code>power</code> and <code>mod</code>—as
-        alternatives to <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>**</code> and <code>%</code>【115198363139400†L353-L364】.
+        alternatives to <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>**</code> and <code>%</code><sup class="citation"><a href="#fn1" id="fnref1">[1]</a></sup>.
     </p>
     <p>
         The following snippet illustrates element‑wise operations on NumPy arrays. Both the operators
@@ -158,11 +158,11 @@ print("Ratio (function):", divided_fn)</code></pre>
         A <strong>Markov Decision Process (MDP)</strong> is a mathematical framework for sequential decision
         making. According to lecture notes from the University of Alberta, an MDP consists of
         <em>states</em>, <em>actions</em>, stochastic transition rules, rewards and an objective
-        function【320210096800443†L118-L136】. A state <code>s</code> belongs to a set \(\mathcal{S}\) and an action <code>a</code>
+        function<sup class="citation"><a href="#fn2" id="fnref2">[2]</a></sup>. A state <code>s</code> belongs to a set \(\mathcal{S}\) and an action <code>a</code>
         belongs to a set \(\mathcal{A}\). The environment’s dynamics are modelled by the transition
         probabilities \(P_a(s,s')\), which specify the probability of landing in state <code>s'</code> after
-        taking action <code>a</code> in state <code>s</code>【320210096800443†L118-L136】. A reward function \(r_a(s)\) assigns
-        scalar feedback when action <code>a</code> is taken in state <code>s</code>【320210096800443†L138-L142】. The agent’s goal is
+        taking action <code>a</code> in state <code>s</code><sup class="citation"><a href="#fn2" id="fnref2">[2]</a></sup>. A reward function \(r_a(s)\) assigns
+        scalar feedback when action <code>a</code> is taken in state <code>s</code><sup class="citation"><a href="#fn2" id="fnref2">[2]</a></sup>. The agent’s goal is
         to choose a policy \(\pi\) that maximises the discounted expected return.
     </p>
     <h3>Toy Problem: Optimal Pricing</h3>
@@ -227,15 +227,15 @@ for t in range(5):
     </p>
     <ul>
         <li>States \(S\) and actions \(A\), just like in an MDP.</li>
-        <li>A transition function \(T(s,a,s') = P(s'\mid s,a)\) specifying the probability of the next state【467555468819639†L124-L133】.</li>
+        <li>A transition function \(T(s,a,s') = P(s'\mid s,a)\) specifying the probability of the next state<sup class="citation"><a href="#fn3" id="fnref3">[3]</a></sup>.</li>
         <li>An observation set \(O\) and observation model \(Z(s',a,o) = P(o\mid s',a)\) giving the likelihood of
-            observing <code>o</code> after taking action <code>a</code> and landing in state <code>s'</code>【467555468819639†L123-L133】.</li>
-        <li>A reward function \(R(s,a)\) and a discount factor \(\gamma\)【467555468819639†L123-L136】.</li>
+            observing <code>o</code> after taking action <code>a</code> and landing in state <code>s'</code><sup class="citation"><a href="#fn3" id="fnref3">[3]</a></sup>.</li>
+        <li>A reward function \(R(s,a)\) and a discount factor \(\gamma\)<sup class="citation"><a href="#fn3" id="fnref3">[3]</a></sup>.</li>
     </ul>
     <p>
         Because the agent sees only observations, it must maintain a <em>belief state</em>, a
         probability distribution over possible states. Belief updates combine the previous belief,
-        the observation model and Bayes’ rule【467555468819639†L140-L151】. In practice, solving POMDPs
+        the observation model and Bayes’ rule<sup class="citation"><a href="#fn3" id="fnref3">[3]</a></sup>. In practice, solving POMDPs
         exactly is expensive. Approximate methods (e.g. belief‑state MDPs or Monte Carlo
         sampling) are often used.
     </p>
@@ -258,7 +258,7 @@ for t in range(5):
         Q‑learning is a model‑free, value‑based reinforcement learning algorithm. It learns the
         quality (expected return) of taking an action <code>a</code> in state <code>s</code>—the
         Q‑value—through trial and error. GeeksforGeeks explains that the agent interacts with the
-        environment and updates a Q‑table using the temporal‑difference update rule【961484668398399†L82-L86】.
+        environment and updates a Q‑table using the temporal‑difference update rule<sup class="citation"><a href="#fn4" id="fnref4">[4]</a></sup>.
     </p>
     <p>
         The core update formula is:
@@ -266,10 +266,10 @@ for t in range(5):
     <pre><code>Q(s,a) ← Q(s,a) + α \big(R + γ \max_{a'} Q(s',a') - Q(s,a)\big)</code></pre>
     <p>
         where \(\alpha\) is the learning rate, \(\gamma\) is the discount factor and <code>R</code> is the
-        reward【961484668398399†L115-L129】. To balance exploration and exploitation, Q‑learning often
+        reward<sup class="citation"><a href="#fn4" id="fnref4">[4]</a></sup>. To balance exploration and exploitation, Q‑learning often
         uses an \(\varepsilon\)-greedy policy: with probability \(1-\varepsilon\) it selects the
         action with the highest Q‑value, and with probability \(\varepsilon\) it picks a random
-        action【961484668398399†L131-L140】.
+        action<sup class="citation"><a href="#fn4" id="fnref4">[4]</a></sup>.
     </p>
     <h3>Pricing Example Revisited</h3>
     <p>
@@ -335,7 +335,7 @@ print("Optimal pricing policy (0=low price, 1=high price):", policy)
         When state or action spaces are large or continuous, tabular methods become impractical.
         Deep Q‑learning uses neural networks to approximate the action‑value function. Built In
         describes deep Q‑learning as an extension of Q‑learning where a deep neural network
-        approximates Q‑values for each action【622268142678754†L33-L56】. This allows RL agents to
+        approximates Q‑values for each action<sup class="citation"><a href="#fn5" id="fnref5">[5]</a></sup>. This allows RL agents to
         handle high‑dimensional inputs (e.g. images) and continuous state spaces.
     </p>
     <h3>Implementing DQN for CartPole</h3>
@@ -463,9 +463,9 @@ env.close()
         Q‑learning and DQN learn value functions. Another family of RL algorithms learns policies
         directly via gradient ascent on expected return. Spinning Up notes that PPO addresses the
         challenge of taking large policy improvement steps without causing performance collapse
-        by constraining how far the new policy can deviate from the old policy【724650800826684†L93-L112】.
+        by constraining how far the new policy can deviate from the old policy<sup class="citation"><a href="#fn6" id="fnref6">[6]</a></sup>.
         PPO is a first‑order method that uses either a KL penalty or a clipping mechanism to
-        keep updates within a safe region【724650800826684†L93-L110】.
+        keep updates within a safe region<sup class="citation"><a href="#fn6" id="fnref6">[6]</a></sup>.
     </p>
     <p>
         The clipped objective for PPO‑Clip is:
@@ -476,7 +476,7 @@ env.close()
     </code></pre>
     <p>
         where \(A^{\pi_{\theta_k}}(s,a)\) is the advantage estimate and \(\epsilon\) is a small
-        hyper‑parameter controlling the clip range【724650800826684†L124-L136】. PPO chooses the minimum
+        hyper‑parameter controlling the clip range<sup class="citation"><a href="#fn6" id="fnref6">[6]</a></sup>. PPO chooses the minimum
         between the unclipped and clipped terms, effectively capping the incentive to move far
         from the old policy.
     </p>
@@ -540,7 +540,7 @@ for t in range(10):
         PPO, GRPO normalises rewards within a group of responses. Yuge Shi describes the workflow:
         for each prompt, multiple responses are sampled, a reward model assigns scores, and
         advantages are computed by subtracting the mean and dividing by the standard deviation of
-        the group【910949881062373†L382-L403】. This group‑normalised advantage eliminates the critic and
+        the group<sup class="citation"><a href="#fn7" id="fnref7">[7]</a></sup>. This group‑normalised advantage eliminates the critic and
         reduces variance.
     </p>
     <p>
@@ -549,9 +549,9 @@ for t in range(10):
     </p>
     <pre><code>\displaystyle A_i = \frac{R_\phi(r_i) - \text{mean}(\mathcal{G})}{\text{std}(\mathcal{G})}</code></pre>
     <p>
-        where \(R_\phi\) is a learned reward model【910949881062373†L392-L399】. GRPO still uses the PPO
+        where \(R_\phi\) is a learned reward model<sup class="citation"><a href="#fn7" id="fnref7">[7]</a></sup>. GRPO still uses the PPO
         surrogate loss with clipping, but the advantage estimates come from group normalisation
-        rather than a value function【910949881062373†L426-L441】. In contexts such as RLHF (reinforcement
+        rather than a value function<sup class="citation"><a href="#fn7" id="fnref7">[7]</a></sup>. In contexts such as RLHF (reinforcement
         learning from human feedback) for large language models, this approach reduces memory and
         compute costs because no separate critic network is required.
     </p>
@@ -611,8 +611,8 @@ for update in range(num_updates):
     <pre><code>w \leftarrow w - \alpha \frac{\partial J(w,b)}{\partial w}, \quad
 b \leftarrow b - \alpha \frac{\partial J(w,b)}{\partial b}</code></pre>
     <p>
-        where \(\alpha\) is the learning rate【578558331187802†L133-L137】. Gradient descent is widely used
-        in linear and logistic regression, support vector machines and neural networks【578558331187802†L82-L104】.
+        where \(\alpha\) is the learning rate<sup class="citation"><a href="#fn8" id="fnref8">[8]</a></sup>. Gradient descent is widely used
+        in linear and logistic regression, support vector machines and neural networks<sup class="citation"><a href="#fn8" id="fnref8">[8]</a></sup>.
     </p>
     <h3>Toy Problem: Minimising a Quadratic Function</h3>
     <p>
@@ -640,7 +640,7 @@ for i in range(20):
         The Adam optimiser (adaptive moment estimation) builds on gradient descent by maintaining
         exponentially decaying averages of past gradients and squared gradients. GeeksforGeeks notes
         that Adam combines the benefits of momentum, Adagrad and RMSprop; it adapts the learning
-        rate for each parameter based on both the gradient mean and variance【578558331187802†L659-L670】.
+        rate for each parameter based on both the gradient mean and variance<sup class="citation"><a href="#fn8" id="fnref8">[8]</a></sup>.
         This makes Adam robust and efficient for training deep networks.
     </p>
     <p>
@@ -693,12 +693,15 @@ for i in range(1, 51):
     </p>
 </section>
 
-<footer>
-    <p><strong>Sources</strong>: [1] MDP definition【320210096800443†L118-L136】. [2] POMDP components【467555468819639†L123-L134】
-and belief updates【467555468819639†L140-L151】. [3] Q‑learning algorithm and update rule【961484668398399†L82-L86】【961484668398399†L115-L129】【961484668398399†L131-L140】. [4] PPO description and objectives【724650800826684†L93-L112】【724650800826684†L124-L136】. [5] GRPO group
-normalisation【910949881062373†L382-L403】 and surrogate loss【910949881062373†L426-L441】. [6] Gradient descent update rule【578558331187802†L133-L137】
-and Adam explanation【578558331187802†L659-L670】. [7] NumPy arithmetic operations【115198363139400†L353-L364】.
-    </p>
-</footer>
+<footer><ol class="footnotes">
+<li id="fn1">NumPy arithmetic operations <a href="#fnref1" aria-label="Back to content">↩</a></li>
+<li id="fn2">MDP definition <a href="#fnref2" aria-label="Back to content">↩</a></li>
+<li id="fn3">POMDP components <a href="#fnref3" aria-label="Back to content">↩</a></li>
+<li id="fn4">Q‑learning algorithm and update rule <a href="#fnref4" aria-label="Back to content">↩</a></li>
+<li id="fn5">approximates Q‑values for each action <a href="#fnref5" aria-label="Back to content">↩</a></li>
+<li id="fn6">PPO description and objectives <a href="#fnref6" aria-label="Back to content">↩</a></li>
+<li id="fn7">GRPO group normalisation <a href="#fnref7" aria-label="Back to content">↩</a></li>
+<li id="fn8">Gradient descent update rule <a href="#fnref8" aria-label="Back to content">↩</a></li>
+</ol></footer>
 </body>
 </html>
