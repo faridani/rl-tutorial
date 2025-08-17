@@ -87,6 +87,44 @@ The following two lessons should prepare you for almost all of the math that you
 * Gradient TD Methods
 * Regularization & Stability
 
+# Part IV — Deep RL
+
+## Chapter 12. Deep Q‑Learning
+* DQN Architecture
+* Experience Replay & Target Networks
+* Stability Pathologies
+* Data‑Efficiency Tricks
+
+## Chapter 13. Advanced Value Methods
+* Double & Dueling DQN
+* Prioritized Replay
+* Distributional RL (C51, QR‑DQN)
+* Noisy Nets & Parameter Noise
+
+## Chapter 14. Policy Gradient Methods
+* REINFORCE & Baselines
+* Generalized Advantage Estimation (GAE)
+* Natural Gradients
+* Entropy Regularization
+
+## Chapter 15. Actor–Critic & Trust Regions
+* A2C/A3C
+* TRPO
+* PPO (Clip & Penalty)
+* Stability & Hyperparameters
+
+## Chapter 16. Maximum Entropy & Continuous Control
+* Soft Actor–Critic (SAC)
+* Twin Delayed DDPG (TD3)
+* Deterministic Policies (DDPG)
+* Action Squashing & Exploration Noise
+
+## Chapter 17. Model‑Based RL
+* Dyna‑Style Planning
+* Latent Dynamics Models
+* Model‑Predictive Control (MPC)
+* Uncertainty & Ensembles
+
 
 # Part 4  
 
