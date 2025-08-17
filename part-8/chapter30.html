@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Chapter 30 — Systems, Scaling & Tooling</title>
+<style>
+    body { background:#ffffff; color:#222; font-family: 'Georgia','Times New Roman',serif; line-height:1.6; margin:40px;}
+    h1,h2,h3 { color:#24304f; }
+    pre { background:#f8f8f8; border:1px solid #e5e5e5; padding:12px; overflow-x:auto; }
+    code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.95em; }
+    .toc { border-left:4px solid #e5e5e5; padding-left:12px; margin:16px 0; }
+    .note { background:#fcfcff; border:1px solid #e0e7ff; padding:10px; }
+    footer { margin-top: 48px; font-size: 0.9em; color:#555; }
+    </style>
+<script>
+      MathJax = {tex: {inlineMath: [['$','$'],['\\(','\\)']]}};
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<h1>Chapter 30 — Systems, Scaling &amp; Tooling</h1>
+<div class="toc">
+  <p><strong>Subchapters:</strong> Vectorized Environments &amp; Parallelism • Distributed Training &amp; Rollouts • Replay Storage &amp; Checkpointing • Monitoring &amp; Dashboards</p>
+</div>
+
+<h2>30.1 Vectorized Environments &amp; Parallelism</h2>
+<p>RL benefits greatly from vectorizing environment interaction. Instead of stepping a single environment sequentially, step $N$ environments in parallel and batch observations. This reduces Python overhead and improves device utilization for policy evaluation and action sampling.</p>
+<p>Two common patterns are <em>process-based</em> workers (robust isolation, higher IPC cost) and <em>in-process</em> simulators (lower overhead but risk of GIL contention). For many classic control tasks, simple multiprocessing outperforms threading.</p>
+<p>Design the API around <code>reset()</code>/<code>step(actions)</code> that emit batched observations, rewards, dones, and infos. Keep serialization costs low by using shared memory or lightweight pickle protocols when possible.</p>
+<pre><code># Minimal vectorized env wrapper (conceptual)
+import multiprocessing as mp
+
+class SubprocVecEnv:
+    def __init__(self, make_env_fns):
+        self.n = len(make_env_fns)
+        self.parent_conns, self.worker_conns = zip(*[mp.Pipe() for _ in range(self.n)])
+        self.ps = [mp.Process(target=self._worker, args=(wc, f))
+                   for wc, f in zip(self.worker_conns, make_env_fns)]
+        for p in self.ps: p.daemon=True; p.start()
+    def _worker(self, conn, make_env):
+        env = make_env()
+        obs = env.reset()
+        while True:
+            cmd, data = conn.recv()
+            if cmd == 'step':
+                obs, rew, done, info = env.step(data)
+                if done: obs = env.reset()
+                conn.send((obs, rew, done, info))
+            elif cmd == 'reset':
+                obs = env.reset(); conn.send(obs)
+            elif cmd == 'close':
+                conn.close(); break
+    def reset(self):
+        for pc in self.parent_conns: pc.send(('reset', None))
+        return [pc.recv() for pc in self.parent_conns]
+    def step(self, actions):
+        for pc, a in zip(self.parent_conns, actions): pc.send(('step', a))
+        return list(zip(*(pc.recv() for pc in self.parent_conns)))
+</code></pre>
+
+<h2>30.2 Distributed Training &amp; Rollouts</h2>
+<p>Scale by decoupling <em>actors</em> (that generate experience) from <em>learners</em> (that update parameters). Actors pull the latest policy params periodically and push trajectories into a shared queue; learners consume batches and write updated parameters back to a shared store.</p>
+<p>To avoid parameter staleness, control the <em>policy lag</em> between actors and learners. Use prioritized sampling based on temporal-difference error or recency, and throttle actors if the learner falls behind.</p>
+<p>Fault tolerance matters: actors should be stateless (reconstructible from seeds and global parameters), and the replay/parameter servers should checkpoint frequently. Prefer idempotent writes and “at-least-once” processing semantics.</p>
+<pre><code># Skeleton for distributed rollouts with multiprocessing Queues
+import multiprocessing as mp, time, numpy as np
+
+def actor(param_q, exp_q, seed=0):
+    rng = np.random.default_rng(seed)
+    theta = param_q.get()  # pull initial params
+    while True:
+        traj = []  # collect one episode
+        # ... interact with env using policy parametrized by theta ...
+        exp_q.put(traj)
+        if not param_q.empty():
+            theta = param_q.get()  # refresh
+
+def learner(param_q, exp_q):
+    theta = np.zeros(10)  # dummy params
+    while True:
+        traj = exp_q.get()
+        # ... compute gradients and update theta ...
+        param_q.put(theta)
+
+if __name__ == "__main__":
+    param_q, exp_q = mp.Queue(), mp.Queue(maxsize=1024)
+    L = mp.Process(target=learner, args=(param_q, exp_q)); L.start()
+    for s in range(4):
+        mp.Process(target=actor, args=(param_q, exp_q, s)).start()
+    param_q.put(np.zeros(10))
+    time.sleep(1)
+</code></pre>
+
+<h2>30.3 Replay Storage &amp; Checkpointing</h2>
+<p>A replay buffer provides uniform or prioritized sampling of past transitions. For off-policy stability, cap buffer size and sample mini-batches uniformly to decorrelate data. Prioritized replay weights sampling by $|\delta_t|$ (TD error) while correcting bias with importance weights.</p>
+<p>Checkpoints should include model weights, optimizer state, random seeds, and a copy of the configuration. Use atomic writes (temp file + rename). Version checkpoints with monotonically increasing step counters and keep a retention policy.</p>
+<p>For large-scale training, shard replay across processes and colocate with actors to minimize network hops. Periodically compact or reindex storage to reduce fragmentation.</p>
+<pre><code># Simple replay buffer and checkpoint utilities
+import os, json, pickle, numpy as np
+
+class Replay:
+    def __init__(self, capacity):
+        self.capacity, self.ptr = capacity, 0
+        self.obs, self.act, self.rew, self.next_obs, self.done = [None]*capacity, [None]*capacity, [0]*capacity, [None]*capacity, [False]*capacity
+        self.full = False
+    def add(self, o,a,r,no,d):
+        self.obs[self.ptr], self.act[self.ptr], self.rew[self.ptr], self.next_obs[self.ptr], self.done[self.ptr] = o,a,r,no,d
+        self.ptr = (self.ptr + 1) % self.capacity
+        self.full = self.full or self.ptr == 0
+    def sample(self, n, rng=None):
+        rng = np.random.default_rng(rng)
+        N = self.capacity if self.full else self.ptr
+        idx = rng.choice(N, size=n, replace=False)
+        return [ [arr[i] for i in idx] for arr in (self.obs,self.act,self.rew,self.next_obs,self.done) ]
+
+def save_ckpt(path, step, weights, opt_state, config):
+    tmp = path + ".tmp"
+    with open(tmp,"wb") as f:
+        pickle.dump(dict(step=step, weights=weights, opt=opt_state, config=config), f)
+    os.replace(tmp, path)
+
+def load_ckpt(path):
+    with open(path,"rb") as f: return pickle.load(f)
+</code></pre>
+
+<h2>30.4 Monitoring &amp; Dashboards</h2>
+<p>Observability accelerates iteration. Log scalar metrics (losses, returns, fps), histograms (grad norms), and qualitative artifacts (videos, evaluation rollouts). Emit both step-based and time-based indices to align with different x-axes.</p>
+<p>At minimum, record a CSV per run with metrics; a lightweight dashboard can tail and plot these files. For multi-run comparisons, aggregate into a single table with run metadata (config hash, seed, env).</p>
+<p>Production systems should export health checks and alerts—e.g., return drops, exploding losses, or stalled throughput. Track per-component latencies to diagnose bottlenecks.</p>
+<pre><code># Minimal CSV logger
+import csv, time, pathlib
+class CSVLogger:
+    def __init__(self, path):
+        self.path = pathlib.Path(path); self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.file = open(self.path, 'w', newline=''); self.writer = csv.DictWriter(self.file, fieldnames=['step','time','return','loss'])
+        self.writer.writeheader()
+    def log(self, step, **kw):
+        self.writer.writerow({'step':step, 'time':time.time(), **kw}); self.file.flush()
+</code></pre>
+
+<footer>
+  <p><strong>License:</strong> CC-BY 4.0. This chapter is a didactic template; adapt freely. Equations rendered by MathJax.</p>
+</footer>
+</body>
+</html>

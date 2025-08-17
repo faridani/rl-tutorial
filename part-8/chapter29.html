@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Chapter 29 — Experimentation & Evaluation</title>
+<style>
+    body { background:#ffffff; color:#222; font-family: 'Georgia','Times New Roman',serif; line-height:1.6; margin:40px;}
+    h1,h2,h3 { color:#24304f; }
+    pre { background:#f8f8f8; border:1px solid #e5e5e5; padding:12px; overflow-x:auto; }
+    code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.95em; }
+    .toc { border-left:4px solid #e5e5e5; padding-left:12px; margin:16px 0; }
+    .note { background:#fcfcff; border:1px solid #e0e7ff; padding:10px; }
+    footer { margin-top: 48px; font-size: 0.9em; color:#555; }
+    </style>
+<script>
+      MathJax = {tex: {inlineMath: [['$','$'],['\\(','\\)']]}};
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<h1>Chapter 29 — Experimentation &amp; Evaluation</h1>
+<div class="toc">
+  <p><strong>Subchapters:</strong> Metrics &amp; Confidence Intervals • Ablations &amp; Hyperparameter Tuning • Statistical Significance • Reproducibility &amp; Seeding</p>
+</div>
+
+<h2>29.1 Metrics &amp; Confidence Intervals</h2>
+<p>In reinforcement learning, outcome variability is large because trajectories are stochastic and learning is path-dependent. Always report a primary metric (e.g., average undiscounted return per episode) and complementary ones such as success rate or regret. When comparing algorithms, aggregate across <em>independent</em> random seeds and across environments; single-run curves are misleading.</p>
+<p>Confidence intervals communicate estimator uncertainty. For non-Gaussian returns and small sample sizes, the <em>percentile bootstrap</em> is robust. Given seeds $s=1,\dots,S$ with mean returns $\bar{G}_s$, we resample $S$ means with replacement $B$ times and take empirical quantiles. Report the median along with 95% intervals. Avoid “over-smoothing” by running excessive environment steps just for nicer plots.</p>
+<p>Separately track <em>sample-efficiency</em> (return vs. environment steps) and <em>wall-clock efficiency</em> (return vs. seconds). The former reflects algorithmic efficiency; the latter includes systems and implementation factors. A method that wins in steps may lose in time without vectorization or GPU utilization.</p>
+<pre><code># Bootstrap CI for mean episodic return across seeds
+import numpy as np
+
+def bootstrap_ci(x, B=2000, alpha=0.05, rng=None):
+    rng = np.random.default_rng(rng)
+    x = np.asarray(x)
+    boots = np.array([rng.choice(x, size=len(x), replace=True).mean() for _ in range(B)])
+    lo, hi = np.quantile(boots, [alpha/2, 1-alpha/2])
+    return x.mean(), (lo, hi)
+
+seeds_returns = [112.3, 119.8, 104.9, 121.4, 109.6]
+mean, (lo, hi) = bootstrap_ci(seeds_returns, rng=0)
+print(f"Mean={mean:.1f}, 95% CI=({lo:.1f}, {hi:.1f})")</code></pre>
+
+<h2>29.2 Ablations &amp; Hyperparameter Tuning</h2>
+<p>Ablations isolate the contribution of design choices. Start from a strong but <em>minimal</em> baseline, then toggle one factor at a time (e.g., target network, advantage estimator, entropy bonus). For credibility, show both “add” and “remove” directions and keep compute budgets fixed across variants. Aggregate results across benchmarks to avoid cherry-picking.</p>
+<p>Hyperparameters often interact. Grid search is easy to parallelize but quickly becomes expensive; Latin hypercube or Bayesian optimization reduces trials. Use a <em>validation environment suite</em> distinct from the final <em>test suite</em>. Do not tune on the test suite. Keep per-trial seeds fixed across methods to control variance.</p>
+<p>Capture the full configuration (algorithm knobs + environment parameters) in a single structured file (YAML/JSON). Store hashes of source and config next to checkpoints, so any curve can be reproduced by re-running an exact commit and configuration.</p>
+<pre><code># Minimal ablation harness (conceptual)
+from itertools import product
+import json, subprocess, pathlib
+
+base_cfg = { "algo":"ppo", "lr":3e-4, "clip":0.2, "entropy":0.01, "env":"CartPole-v1", "seed":0 }
+grid = { "lr":[1e-4,3e-4], "clip":[0.1,0.2,0.3], "entropy":[0.0,0.01] }
+
+def variants(base, grid):
+    keys, vals = zip(*grid.items())
+    for combo in product(*vals):
+        cfg = dict(base); cfg.update(dict(zip(keys, combo)))
+        yield cfg
+
+out = pathlib.Path("runs"); out.mkdir(exist_ok=True)
+for i, cfg in enumerate(variants(base_cfg, grid)):
+    path = out/f"exp_{i:03d}.json"; path.write_text(json.dumps(cfg, indent=2))
+    # subprocess.run(["python","train.py","--config",str(path)])  # launch</code></pre>
+
+<h2>29.3 Statistical Significance</h2>
+<p>Significance testing helps distinguish real effects from noise. For paired comparisons across seeds, a <em>paired bootstrap</em> or <em>Wilcoxon signed-rank</em> test is preferable to a plain $t$-test when normality is doubtful. When comparing many methods, control the false discovery rate (e.g., Benjamini–Hochberg) and report effect sizes (e.g., median paired difference).</p>
+<p>Time-series curves are highly autocorrelated: testing at every step inflates Type I error. Prefer <em>area under the curve</em> (AUC) or performance at pre-registered milestones (e.g., 100k/500k/1M steps). If you must test at multiple steps, adjust for multiplicity.</p>
+<p>Pre-register your evaluation protocol (metrics, seeds, steps, environments) before tuning. This guards against implicit p-hacking and makes negative results as informative as positive ones.</p>
+<pre><code># Paired bootstrap test for two methods evaluated on same seeds
+import numpy as np
+
+def paired_bootstrap_pvalue(a, b, B=5000, rng=None):
+    rng = np.random.default_rng(rng)
+    a, b = np.array(a), np.array(b)
+    diffs = a - b
+    count = 0
+    for _ in range(B):
+        boot = rng.choice(diffs, size=len(diffs), replace=True)
+        if boot.mean() &lt;= 0:
+            count += 1
+    return count / B
+
+a = np.array([125, 122, 118, 130, 129])
+b = np.array([121, 120, 119, 123, 122])
+print("p-value (A &gt; B):", 1 - paired_bootstrap_pvalue(a,b,rng=0))</code></pre>
+
+<h2>29.4 Reproducibility &amp; Seeding</h2>
+<p>Exact reproducibility requires fixing code, dependencies, hardware, and nondeterminism sources. In practice we aim for <em>statistical</em> reproducibility: repeated runs with controlled seeds deliver comparable distributions of outcomes. Log seeds, library versions, and environment build identifiers.</p>
+<p>Seed <code>random</code>, <code>numpy</code>, and your DL framework. Disable non-deterministic cuDNN kernels if necessary. Use fixed environment seeds for evaluation, but randomize training seeds to avoid overfitting to any particular stochasticity pattern.</p>
+<p>Package experiments as containers and track outputs (metrics, artifacts) in an experiment tracker. Export a single “card” (commit, config hash, metrics, plots) to accompany each result figure in your paper or report.</p>
+<pre><code># Seeding utilities
+import os, random, numpy as np
+
+def seed_everything(seed=0):
+    random.seed(seed)
+    np.random.seed(seed)
+    try:
+        import torch
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+    except Exception:
+        pass
+    os.environ["PYTHONHASHSEED"] = str(seed)
+</code></pre>
+
+<footer>
+  <p><strong>License:</strong> CC-BY 4.0. This chapter is a didactic template; adapt freely. Equations rendered by MathJax.</p>
+</footer>
+</body>
+</html>

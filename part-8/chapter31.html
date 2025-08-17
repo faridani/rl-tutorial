@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Chapter 31 — Deployment & Operations</title>
+<style>
+    body { background:#ffffff; color:#222; font-family: 'Georgia','Times New Roman',serif; line-height:1.6; margin:40px;}
+    h1,h2,h3 { color:#24304f; }
+    pre { background:#f8f8f8; border:1px solid #e5e5e5; padding:12px; overflow-x:auto; }
+    code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.95em; }
+    .toc { border-left:4px solid #e5e5e5; padding-left:12px; margin:16px 0; }
+    .note { background:#fcfcff; border:1px solid #e0e7ff; padding:10px; }
+    footer { margin-top: 48px; font-size: 0.9em; color:#555; }
+    </style>
+<script>
+      MathJax = {tex: {inlineMath: [['$','$'],['\\(','\\)']]}};
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+
+<h1>Chapter 31 — Deployment &amp; Operations</h1>
+<div class="toc">
+  <p><strong>Subchapters:</strong> Serving Policies Online • Guardrails, Kill‑Switches &amp; Rollbacks • Drift Detection &amp; Retraining • Human‑in‑the‑Loop</p>
+</div>
+
+<h2>31.1 Serving Policies Online</h2>
+<p>Serving turns a trained policy $\pi_\theta(a\,|\,x)$ into an API. A common pattern is a stateless HTTP/gRPC service that loads a checkpoint and exposes <code>POST /act</code>. The service should be fast (batching &amp; vectorization), safe (input validation), and observable (latencies, error rates).</p>
+<p>Separate the <em>inference</em> binary (lightweight, CPU/GPU-optimized) from the <em>trainer</em>. Share parameters via a model registry or object store. For A/B testing and gradual rollout, route a fraction $p$ of traffic to a candidate policy.</p>
+<p>Sign requests (or use mTLS) so that only trusted callers can obtain actions. Log decisions with enough context (state features, policy id, hash) for audit and offline evaluation.</p>
+<pre><code># Minimal FastAPI service stub (requires fastapi &amp; uvicorn)
+from fastapi import FastAPI
+from pydantic import BaseModel
+import numpy as np, pickle
+
+class ActRequest(BaseModel):
+    context: list  # e.g., feature vector
+app = FastAPI()
+state = {'theta': np.zeros(10), 'policy_id':'v1'}
+
+@app.post('/act')
+def act(req: ActRequest):
+    x = np.array(req.context)
+    a = int(x @ state['theta'] &gt; 0)  # placeholder linear policy
+    return {'action': a, 'policy_id': state['policy_id']}
+# Run with: uvicorn serve:app --port 8000</code></pre>
+
+<h2>31.2 Guardrails, Kill‑Switches &amp; Rollbacks</h2>
+<p>Guardrails enforce safety and business constraints. Examples: action clipping (e.g., price bounds), allowlists/denylists, and policy “shadow mode” where decisions are logged but not applied. Implement an immediate kill‑switch that routes all traffic to a stable baseline.</p>
+<p>Use circuit breakers to stop calling the policy if downstream errors spike. Keep a <em>fallback policy</em> (heuristic or last-known-good) packaged alongside the new policy so rollback is instant and local.</p>
+<p>Record <em>policy provenance</em>: training data slice, code commit, config, and evaluation results. Require a deployment checklist (metrics thresholds, safety tests) before a model becomes eligible for traffic.</p>
+<pre><code># Example: bounded action wrapper and kill-switch
+class BoundedPolicy:
+    def __init__(self, pi, low, high): self.pi, self.low, self.high = pi, low, high
+    def act(self, x):
+        a = self.pi.act(x)
+        return float(min(self.high, max(self.low, a)))
+
+class Switch:
+    def __init__(self): self.enabled = True
+    def route(self, online, fallback, x):
+        return (online if self.enabled else fallback).act(x)
+</code></pre>
+
+<h2>31.3 Drift Detection &amp; Retraining</h2>
+<p>Deployed policies face <em>dataset shift</em>: changes in state distributions (covariate shift), reward functions, or dynamics. Monitor distributional distance between recent contexts and a training reference window. Simple tests—Kolmogorov–Smirnov for scalars, Population Stability Index (PSI), or Jensen–Shannon divergence—are practical sentinels.</p>
+<p>Set alert thresholds and define an <em>auto-retrain</em> playbook: freeze traffic share, refresh data, retrain with fixed protocol, validate against holdout, and canary the new policy. Keep human approval in the loop for irreversible or high-stakes domains.</p>
+<p>Store a rolling buffer of recent interactions to enable <em>off-policy evaluation</em> of candidate policies via importance sampling, reducing risky online exploration.</p>
+<pre><code># PSI (Population Stability Index) for covariate shift
+import numpy as np
+
+def psi(expected, actual, bins=10):
+    e_hist, b = np.histogram(expected, bins=bins, range=(min(expected+actual), max(expected+actual)), density=True)
+    a_hist, _ = np.histogram(actual,   bins=b,    range=(min(expected+actual), max(expected+actual)), density=True)
+    # add epsilon to avoid log(0)
+    eps = 1e-8; e = e_hist + eps; a = a_hist + eps
+    return float(np.sum((a - e) * np.log(a / e)))
+
+ref = list(np.random.normal(0,1,10_000))
+now = list(np.random.normal(0.5,1,2_000))
+print("PSI:", psi(ref, now))</code></pre>
+
+<h2>31.4 Human‑in‑the‑Loop</h2>
+<p>Humans remain essential for oversight, preference elicitation, and rapid response to anomalies. In interactive systems (recommendations, bidding), pair the policy with a UI that allows experts to audit, override, and annotate decisions. These annotations can seed preference models for alignment.</p>
+<p>Safe exploration can be staged via <em>counterfactual evaluation</em> on logs, then canaries with small traffic shares, and finally progressive rollouts. At each stage, human reviewers can halt, adjust constraints, or modify the reward model.</p>
+<p>For fairness, monitor subgroup metrics. If disparities emerge, consider constrained optimization (e.g., demographic parity constraints) or reward shaping that encodes admissible trade-offs approved by stakeholders.</p>
+<pre><code># Skeleton: bandit gating for human oversight
+class Gate:
+    def __init__(self, p_human=0.05): self.p = p_human
+    def route(self, x, policy, human_callback):
+        import random
+        if random.random() &lt; self.p:
+            return human_callback(x)  # send to expert
+        return policy.act(x)
+</code></pre>
+
+<footer>
+  <p><strong>License:</strong> CC-BY 4.0. This chapter is a didactic template; adapt freely. Equations rendered by MathJax.</p>
+</footer>
+</body>
+</html>
