@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 10 – Exploration in Control</title>
+  <style>
+    body {
+      background-color: #ffffff;
+      font-family: "Georgia", "Times New Roman", serif;
+      color: #333333;
+      line-height: 1.6;
+      margin: 40px;
+    }
+    h1, h2, h3 {
+      color: #003366;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 15px;
+      border-left: 3px solid #cccccc;
+      overflow-x: auto;
+    }
+    code {
+      font-family: "Courier New", monospace;
+      font-size: 0.9em;
+    }
+    .sources {
+      font-size: 0.9em;
+      border-top: 1px solid #cccccc;
+      margin-top: 40px;
+      padding-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Chapter 10 – Exploration in Control</h1>
+
+  <p>Exploration determines how an agent gathers information about its environment.  Without adequate exploration, the agent may prematurely commit to suboptimal actions and become stuck in local optima.  This chapter surveys several widely used exploration strategies—ε‑greedy schedules, softmax (Boltzmann) action selection, count‑based bonuses, and intrinsic motivation—and demonstrates how they can be implemented in a tabular pricing example.  We conclude with a brief discussion of directed information gain.</p>
+
+  <h2>10.1 ε‑Greedy Schedules and Softmax Action Selection</h2>
+  <p>The simplest exploration scheme is <strong>ε‑greedy</strong>.  At each time step the agent chooses the action with the highest estimated value with probability \(1-ε\) and a random action with probability \(ε\).  Early in training \(ε\) is often set high to encourage exploration and then slowly decreased to emphasise exploitation.  Decay schedules—linear, exponential or piecewise—control how quickly the policy becomes greedy.</p>
+  <p>Another approach is <strong>softmax action selection</strong>, also known as Boltzmann exploration.  Rather than choosing the single best action, softmax assigns a probability to each action proportional to the exponential of its estimated value.  The Milvus AI reference notes that softmax uses a Boltzmann distribution and a temperature parameter \(τ\) to control how “greedy” or exploratory the policy is【396386515869806†L72-L91】.  At high temperatures the probabilities are nearly uniform, encouraging exploration; at low temperatures the policy strongly favours the highest valued action.  For a vector of Q‑values \(Q(s,a)\), the softmax probabilities are computed as</p>
+  <p>\[ \pi(a\mid s) = \frac{\exp\big(Q(s,a)/τ\big)}{\sum_{b} \exp\big(Q(s,b)/τ\big)}. \]</p>
+  <p>The code below demonstrates ε‑greedy with a decaying schedule and softmax action selection for the pricing problem.  We begin with a large \(ε\) and linearly decrease it over episodes.  The softmax implementation chooses prices according to the Boltzmann distribution and uses a temperature schedule.</p>
+  <pre><code class="python">def epsilon_schedule(start=1.0, end=0.05, decay_steps=5000, step=0):
+    """Linearly decay epsilon from start to end over decay_steps."""
+    return max(end, start - (start - end) * (step / decay_steps))
+
+def softmax_action(q_values, temperature):
+    z = np.exp(q_values / temperature)
+    return z / np.sum(z)
+
+def run_exploration(num_episodes=3000):
+    Q = np.zeros((1, 2))
+    tau_start, tau_end = 1.0, 0.1
+    for episode in range(num_episodes):
+        # update epsilon and temperature
+        eps = epsilon_schedule(step=episode)
+        tau = max(tau_end, tau_start - (tau_start - tau_end) * (episode / num_episodes))
+        # choose action using softmax or ε‑greedy based on a coin flip
+        if np.random.rand() &lt; 0.5:
+            # ε‑greedy
+            if np.random.rand() &lt; eps:
+                a = np.random.choice([0, 1])
+            else:
+                a = np.argmax(Q[0])
+        else:
+            # softmax
+            probs = softmax_action(Q[0], tau)
+            a = np.random.choice([0, 1], p=probs)
+        # simulate reward
+        price = prices[a]
+        sale_prob = 0.6 if a == 0 else 0.4
+        r = price if np.random.rand() &lt; sale_prob else 0.0
+        # simple Q-learning update
+        td_target = r + 0.9 * np.max(Q[0])
+        Q[0, a] += 0.1 * (td_target - Q[0, a])
+    return Q
+
+Q_explore = run_exploration()
+print("Q-values after exploration:", Q_explore)
+</code></pre>
+
+  <h2>10.2 Count‑Based Exploration</h2>
+  <p>When rewards are sparse, an agent may never reach rewarding states if it relies solely on random exploration.  <strong>Count‑based exploration</strong> encourages novelty by adding an intrinsic bonus inversely related to the number of times a state (or state–action pair) has been visited.  Lilian Weng’s deep exploration survey describes the basic idea: count how many times a state has been encountered and assign a bonus that motivates the agent to prefer rarely visited states【365097054523631†L141-L147】.  In practice, the empirical count \(N(s,a)\) is often replaced by a <em>pseudo‑count</em> derived from density models or hashing when the state space is large.  A common bonus used in classic MBIE‑EB is \(r^i_t = N(s_t, a_t)^{-1/2}\)【365097054523631†L194-L197】, which gives diminishing rewards as the state–action pair becomes familiar.</p>
+  <p>In our pricing environment there is only one state, so we can apply a simple count‑based bonus at the action level.  Each time an action is selected, we increment its count and add a bonus equal to \(1/\sqrt{N(a)}\).  This encourages the algorithm to sample both prices early in training.  Over time the intrinsic bonus decreases, allowing the extrinsic reward to dominate.</p>
+  <pre><code class="python">def count_based_q_learning(num_episodes=5000, alpha=0.1, gamma=0.9):
+    Q = np.zeros((1, 2))
+    counts = np.zeros(2)
+    for _ in range(num_episodes):
+        for t in range(5):
+            # choose action greedily wrt Q+bonus
+            bonuses = 1.0 / np.sqrt(np.maximum(1.0, counts))
+            a = np.argmax(Q[0] + bonuses)
+            counts[a] += 1
+            price = prices[a]
+            sale_prob = 0.6 if a == 0 else 0.4
+            r_ext = price if np.random.rand() &lt; sale_prob else 0.0
+            r_int = bonuses[a]  # intrinsic bonus
+            td_target = r_ext + r_int + gamma * np.max(Q[0])
+            Q[0, a] += alpha * (td_target - Q[0, a])
+    return Q
+
+Q_count = count_based_q_learning()
+print("Count-based Q-values:", Q_count)
+</code></pre>
+
+  <h2>10.3 Intrinsic Motivation: Random Network Distillation &amp; Intrinsic Curiosity Module</h2>
+  <p>Intrinsic motivation provides another way to encourage exploration by rewarding the agent for surprising or informative experiences.  In <strong>Random Network Distillation (RND)</strong>, the agent trains a predictor \(\hat f(s_t;\theta)\) to mimic a fixed, randomly initialised network \(f(s_t)\).  The exploration bonus is defined as the squared prediction error \(r^i(s_t) = \lVert \hat f(s_t) - f(s_t) \rVert_2^2\).  Lilian Weng notes that because the predictor improves on frequently seen states, the error and thus the bonus become smaller over time; novel states yield large errors and hence large intrinsic rewards【365097054523631†L505-L513】.  Normalising the bonus over time helps stabilise learning【365097054523631†L519-L527】.</p>
+  <p>The <strong>Intrinsic Curiosity Module (ICM)</strong> takes a different approach.  The agent builds a forward model that predicts the encoded feature vector of the next state given the current state and action.  The GeeksforGeeks article on curiosity‑driven exploration describes the core idea: after taking an action, the agent compares its predicted next state to the actual next state, and the prediction error becomes the curiosity reward【783328011115561†L106-L115】.  In the ICM architecture, an encoder produces feature vectors \(\phi(s_t)\) and \(\phi(s_{t+1})\), an inverse dynamics model predicts the action from the two features, and a forward model predicts \(\phi(s_{t+1})\) given \(\phi(s_t)\) and the action【783328011115561†L117-L140】.  The forward model’s mean‑squared error forms the intrinsic reward: \(r_t^{\text{int}} = \eta\,\|\hat \phi(s_{t+1}) - \phi(s_{t+1})\|^2\)【783328011115561†L160-L174】.</p>
+  <p>Although RND and ICM are often used with neural network function approximators, we can adapt the idea of prediction error to our tabular pricing problem by constructing a simple predictor.  Here the state is trivial, so the intrinsic bonus will always be zero.  To illustrate the concept, the following pseudocode outlines the RND update: we treat each unique observation (the pricing action) as a state, estimate a feature vector (for example, one‑hot), and train a predictor to match a randomly initialised target network.  The squared error between the two features yields the bonus.  In a tabular case the prediction error will be zero after the first visit, so we simulate a decaying bonus.</p>
+  <pre><code class="python">def rnd_bonus(action, predictor, target):
+    """Compute a random network distillation bonus for the given action."""
+    # one-hot features for two actions
+    x = np.zeros(2)
+    x[action] = 1.0
+    # target and predictor outputs
+    y_target = target @ x
+    y_pred = predictor @ x
+    error = np.sum((y_target - y_pred) ** 2)
+    return error
+
+def intrinsic_exploration(num_steps=1000):
+    # random target and predictor matrices
+    target = np.random.randn(4, 2)
+    predictor = np.zeros((4, 2))
+    bonuses = []
+    for step in range(num_steps):
+        action = np.random.choice([0, 1])
+        bonus = rnd_bonus(action, predictor, target)
+        # simple predictor update towards target
+        predictor += 0.01 * np.outer((target @ np.eye(2)[action] - predictor @ np.eye(2)[action]), np.eye(2)[action])
+        bonuses.append(bonus)
+    return bonuses
+
+intrinsic_rewards = intrinsic_exploration()[:5]
+print("Sample intrinsic bonuses (RND):", intrinsic_rewards)
+</code></pre>
+
+  <h2>10.4 Directed Information Gain</h2>
+  <p>Directed information gain measures how much an agent’s knowledge about the environment would improve by executing a particular action.  Formalising exploration as a problem of information acquisition, this concept encourages actions that maximise the expected reduction in uncertainty about the transition dynamics or reward function.  Methods such as <em>information‑theoretic exploration</em> estimate a probability distribution over models of the environment and choose actions that maximise the expected Kullback–Leibler divergence between the posterior and prior models.  Although computing exact information gain can be expensive, approximate approaches using ensembles or Bayesian neural networks can provide a practical implementation.</p>
+  <p>In our simple pricing problem, directed information gain might be applied by maintaining a belief over the sale probability at each price.  The agent could choose the price that would most reduce the uncertainty in this belief.  In practice, combining directed information gain with value‑based objectives can encourage the agent to learn accurate models while still maximising reward.</p>
+
+  <div class="sources">
+    <h3>Sources</h3>
+    <ul>
+      <li>The Milvus AI reference explains softmax action selection and the role of a temperature parameter【396386515869806†L72-L91】.</li>
+      <li>Lilian Weng’s blog introduces count‑based exploration and describes assigning a bonus inverse to the square root of visit counts【365097054523631†L141-L147】【365097054523631†L194-L197】.</li>
+      <li>The same blog describes Random Network Distillation and defines the RND intrinsic reward as the squared error between a predictor and a fixed random network【365097054523631†L505-L513】.</li>
+      <li>GeeksforGeeks outlines the Intrinsic Curiosity Module and describes how prediction error in the forward model yields an intrinsic reward【783328011115561†L106-L115】【783328011115561†L117-L140】【783328011115561†L160-L174】.</li>
+    </ul>
+  </div>
+</body>
+</html>

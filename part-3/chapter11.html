@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 11 – Function Approximation</title>
+  <style>
+    body {
+      background-color: #ffffff;
+      font-family: "Georgia", "Times New Roman", serif;
+      color: #333333;
+      line-height: 1.6;
+      margin: 40px;
+    }
+    h1, h2, h3 {
+      color: #003366;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 15px;
+      border-left: 3px solid #cccccc;
+      overflow-x: auto;
+    }
+    code {
+      font-family: "Courier New", monospace;
+      font-size: 0.9em;
+    }
+    .sources {
+      font-size: 0.9em;
+      border-top: 1px solid #cccccc;
+      margin-top: 40px;
+      padding-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Chapter 11 – Function Approximation</h1>
+
+  <p>When the state or action space is large or continuous, tabular methods become impractical because they require storing a value for every possible state–action pair.  <strong>Function approximation</strong> addresses this challenge by representing value functions or policies with parameterised models.  Instead of learning a separate value for each state, the agent learns parameters of a function that generalises across states.  This chapter presents linear and non‑linear approximators, discusses feature construction, introduces gradient TD algorithms and considers regularisation strategies for stabilising training.</p>
+
+  <h2>11.1 Linear Function Approximation</h2>
+  <p>Linear function approximation uses a weighted sum of features to represent a value function.  If \(\phi(s)\) denotes a vector of features extracted from state \(s\) and \(\theta\) is a vector of weights, the value function is approximated as \(V(s) \approx \theta^\top \phi(s)\).  The GeeksforGeeks article on function approximation explains that linear approximators are simple and efficient but may lack the capacity to represent complex functions【654868042728837†L141-L148】.  For example, in a pricing problem with two price actions, we might choose features representing whether the price is low or high, and learn weights that map these features to expected revenue.</p>
+  <p>To update a linear value function estimate, we use stochastic gradient descent on a suitable objective function.  For policy evaluation, the mean‑squared TD error is often used.  Given a sample transition \((s_t, r_{t+1}, s_{t+1})\), the TD error is \(\delta_t = r_{t+1} + \gamma \theta^\top \phi(s_{t+1}) - \theta^\top \phi(s_t)\).  The weights are updated by \(\theta \leftarrow \theta + \alpha \, \delta_t \, \phi(s_t)\), where \(\alpha\) is the step size.  This update is linear in \(\theta\), which makes it efficient and easy to implement.</p>
+  <p>The following code implements linear TD(0) for the pricing problem using one‑hot features.  The feature vector for action 0 is \((1,0)\) and for action 1 is \((0,1)\).  The weight vector \(\theta\) therefore directly represents the estimated returns for the two actions.</p>
+  <pre><code class="python">def linear_td(num_episodes=5000, alpha=0.1, gamma=0.9):
+    # one-hot features for two actions
+    theta = np.zeros(2)
+    phi = np.eye(2)  # basis functions
+    for _ in range(num_episodes):
+        # choose random action
+        a = np.random.choice([0, 1])
+        reward = prices[a] if np.random.rand() &lt; (0.6 if a == 0 else 0.4) else 0.0
+        # next action for bootstrapping
+        a_next = np.random.choice([0, 1])
+        td_error = reward + gamma * np.dot(theta, phi[a_next]) - np.dot(theta, phi[a])
+        theta += alpha * td_error * phi[a]
+    return theta
+
+theta_est = linear_td()
+print("Linear TD weights:", theta_est)
+</code></pre>
+
+  <h2>11.2 Feature Construction</h2>
+  <p>Choosing the right features is critical to the performance of function approximators.  Features should capture aspects of the state that are predictive of future rewards and facilitate generalisation across similar states.  The GeeksforGeeks article emphasises that features represent relevant information for decision making and that choosing informative features is crucial for accurate value estimation【654868042728837†L176-L178】.  In simple domains, hand‑crafted features (indicator variables, polynomial basis functions or radial basis functions) may suffice, while in complex domains, learned features from neural networks are often used.</p>
+  <p>For the pricing example, a basic feature construction might include the price level (low or high), the difference between the current price and an average market price, or an estimate of demand elasticity.  Such features enable the agent to learn how revenue changes as the price varies.  When the environment includes additional state variables, such as customer segments or time of day, feature vectors can be extended accordingly.  Normalising or scaling features often improves numerical stability.</p>
+  <p>The following code constructs a simple polynomial feature vector for a continuous price variable.  We normalise the price to lie in \([0,1]\) and then compute polynomial terms up to degree 2.  The resulting feature vector can then be used with linear function approximation.</p>
+  <pre><code class="python">def price_features(price):
+    # normalise price between 0 and 1
+    p_norm = (price - prices.min()) / (prices.max() - prices.min())
+    # polynomial basis up to degree 2
+    return np.array([1.0, p_norm, p_norm ** 2])
+
+def linear_value_with_features(num_samples=1000, alpha=0.05):
+    theta = np.zeros(3)
+    for _ in range(num_samples):
+        # sample a random price from a continuous range
+        price = np.random.uniform(8, 14)
+        # synthetic reward: assume revenue = price * demand where demand declines linearly
+        demand = max(0, 1.0 - 0.05 * (price - 10))
+        reward = price * demand
+        phi_p = price_features(price)
+        # bootstrap with an estimate at the same state (no next state in this one-step example)
+        td_error = reward - np.dot(theta, phi_p)
+        theta += alpha * td_error * phi_p
+    return theta
+
+theta_price = linear_value_with_features()
+print("Estimated weights for price features:", theta_price)
+</code></pre>
+
+  <h2>11.3 Gradient TD Methods</h2>
+  <p>Conventional TD learning with function approximation can diverge when used off‑policy.  <strong>Gradient TD methods</strong> are a class of algorithms designed to provide convergence guarantees even when learning off‑policy with linear approximators.  They achieve this by performing stochastic gradient descent on objective functions such as the mean squared projected Bellman error.  Although we do not derive these algorithms here, the key idea is to adjust the weights in a direction that minimises the expected squared TD error while correcting for off‑policy bias using importance sampling ratios.  Popular algorithms in this family include GTD, GTD2 and TDC.  In practice, gradient TD methods are rarely used with deep neural networks, but they are an important theoretical tool for analysing the stability of off‑policy learning.</p>
+  <p>Implementing a gradient TD algorithm requires maintaining auxiliary weight vectors.  For instance, the GTD2 algorithm maintains two sets of weights \(\theta\) and \(w\).  The update equations resemble TD learning for \(\theta\) plus an additional update for \(w\) that corrects the gradient bias.  Although the details are beyond the scope of this introduction, practitioners should be aware of these methods when working with linear value function approximation in off‑policy settings.</p>
+  <p>The following simplified example shows the structure of a GTD‑like update for our pricing problem.  It does not include importance sampling or a full derivation but illustrates the additional auxiliary weights.</p>
+  <pre><code class="python">def simplified_gtd(num_episodes=5000, alpha_theta=0.05, alpha_w=0.05, gamma=0.9):
+    theta = np.zeros(2)
+    w = np.zeros(2)
+    phi = np.eye(2)
+    for _ in range(num_episodes):
+        a = np.random.choice([0, 1])
+        reward = prices[a] if np.random.rand() &lt; (0.6 if a == 0 else 0.4) else 0.0
+        a_next = np.random.choice([0, 1])
+        delta = reward + gamma * np.dot(theta, phi[a_next]) - np.dot(theta, phi[a])
+        theta += alpha_theta * (delta * phi[a] - gamma * np.dot(phi[a], w) * phi[a_next])
+        w += alpha_w * (delta - np.dot(phi[a], w)) * phi[a]
+    return theta
+
+theta_gtd = simplified_gtd()
+print("Simplified GTD weights:", theta_gtd)
+</code></pre>
+
+  <h2>11.4 Regularisation and Stability</h2>
+  <p>Function approximators, particularly neural networks, can be sensitive to hyperparameters and prone to overfitting.  Regularisation techniques improve stability by discouraging the weights from taking extreme values and by smoothing the function.  Common regularisers include ℓ<sub>2</sub> (ridge) penalties, dropout and weight clipping.  Incorporating a small penalty term \(\lambda \|\theta\|^2\) into the objective encourages the weights to remain small.  Dropout randomly omits parts of the network during training, which acts as an ensemble of models and reduces variance.  Weight clipping constrains parameters within a predefined range to prevent divergence.</p>
+  <p>Another method for improving stability is to use target networks and experience replay, as in deep Q‑learning.  A target network is a delayed copy of the current network whose parameters are updated less frequently.  During training, the agent uses the target network to compute TD targets, thus breaking the feedback loop that can destabilise learning.  Experience replay stores past transitions and samples them uniformly or with priority, reducing correlation between consecutive updates.  These techniques can be combined with regularisation to yield robust approximators.</p>
+  <p>The code below demonstrates linear regression with an ℓ<sub>2</sub> penalty on the pricing example.  We augment the loss with \(\lambda \|\theta\|^2\) and update the weights accordingly.</p>
+  <pre><code class="python">def linear_reg_with_l2(num_samples=1000, alpha=0.05, lam=0.01):
+    theta = np.zeros(3)
+    for _ in range(num_samples):
+        price = np.random.uniform(8, 14)
+        demand = max(0, 1.0 - 0.05 * (price - 10))
+        reward = price * demand
+        phi_p = price_features(price)
+        # ridge-regularized update
+        error = reward - np.dot(theta, phi_p)
+        theta += alpha * (error * phi_p - lam * theta)
+    return theta
+
+theta_l2 = linear_reg_with_l2()
+print("Weights with L2 regularisation:", theta_l2)
+</code></pre>
+
+  <div class="sources">
+    <h3>Sources</h3>
+    <ul>
+      <li>GeeksforGeeks explains that linear function approximation represents the value function as a weighted sum of features【654868042728837†L141-L148】.</li>
+      <li>The same article emphasises the importance of choosing informative features for accurate value estimation【654868042728837†L176-L178】.</li>
+    </ul>
+  </div>
+</body>
+</html>

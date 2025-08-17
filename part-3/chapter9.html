@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 9 – Tabular Control Methods</title>
+  <style>
+    body {
+      background-color: #ffffff;
+      font-family: "Georgia", "Times New Roman", serif;
+      color: #333333;
+      line-height: 1.6;
+      margin: 40px;
+    }
+    h1, h2, h3 {
+      color: #003366;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 15px;
+      border-left: 3px solid #cccccc;
+      overflow-x: auto;
+    }
+    code {
+      font-family: "Courier New", monospace;
+      font-size: 0.9em;
+    }
+    .sources {
+      font-size: 0.9em;
+      border-top: 1px solid #cccccc;
+      margin-top: 40px;
+      padding-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Chapter 9 – Tabular Control Methods</h1>
+
+  <p>This chapter introduces value‑based control methods for environments with discrete state–action spaces.  In the tabular setting, the agent maintains explicit estimates of the quality of each state–action pair, and updates these estimates based on sampled experience.  We cover on‑policy and off‑policy methods—including SARSA, Q‑learning, Expected SARSA and Double Q‑learning—and provide simple pricing examples that illustrate their differences.</p>
+
+  <h2>9.1 SARSA: On‑Policy Learning</h2>
+  <p><strong>SARSA</strong> stands for <em>State–Action–Reward–State–Action</em>.  It is an on‑policy algorithm, meaning that it updates its action‑value estimates using the actual actions selected by the behaviour policy.  At each time step, the agent observes a transition \( (S_t, A_t, R_{t+1}, S_{t+1}, A_{t+1}) \) and updates \(Q(S_t, A_t)\) toward the expected return of following the policy from that point onward.  The GeeksforGeeks article on SARSA states that the update rule is</p>
+  <p>\[ Q(s_t, a_t) \leftarrow Q(s_t, a_t) + \alpha \big[r_{t+1} + \gamma Q(s_{t+1}, a_{t+1}) - Q(s_t,a_t)\big], \]</p>
+  <p>where \(\alpha\) is the learning rate and \(\gamma\) is the discount factor【322370354307432†L109-L116】.  Because the update uses \(a_{t+1}\), SARSA learns the value of the behaviour policy; if the policy is ε‑greedy, the algorithm converges to the action‑value function of the ε‑greedy policy.  This makes SARSA appropriate when the same policy is used both to generate experience and to determine which actions are evaluated.</p>
+  <p>To illustrate SARSA, consider a pricing agent with a small set of discrete price points.  The agent uses an ε‑greedy policy: it offers the price with the highest estimated value with probability \(1-ε\) and a random price with probability \(ε\).  After observing the reward and choosing the next price based on the same ε‑greedy policy, the agent updates its Q‑value using the SARSA rule.  Over time the estimates converge and the policy gradually becomes more greedy.</p>
+  <pre><code class="python">import numpy as np
+
+def sarsa(num_episodes=5000, alpha=0.1, gamma=0.9, epsilon=0.1):
+    # initialize Q-values for two price actions
+    Q = np.zeros((1, 2))  # single state since price only depends on action
+    for _ in range(num_episodes):
+        # choose initial action using epsilon-greedy
+        if np.random.rand() &lt; epsilon:
+            a = np.random.choice([0, 1])
+        else:
+            a = np.argmax(Q[0])
+        for t in range(5):
+            price = prices[a]
+            sale_prob = 0.6 if a == 0 else 0.4
+            r = price if np.random.rand() &lt; sale_prob else 0.0
+            # choose next action using same policy
+            if np.random.rand() &lt; epsilon:
+                a_next = np.random.choice([0, 1])
+            else:
+                a_next = np.argmax(Q[0])
+            # update Q
+            Q[0, a] += alpha * (r + gamma * Q[0, a_next] - Q[0, a])
+            a = a_next
+    return Q
+
+Q_sarsa = sarsa()
+print("SARSA Q-values:", Q_sarsa)
+</code></pre>
+
+  <h2>9.2 Q‑Learning: Off‑Policy Control</h2>
+  <p><strong>Q‑learning</strong> is a widely used off‑policy TD control algorithm.  Unlike SARSA, Q‑learning updates its estimates toward the value of the greedy policy regardless of the behaviour policy.  The GeeksforGeeks article summarises the Q‑learning update as</p>
+  <p>\[ Q(S,A) \leftarrow Q(S,A) + \alpha \big[R + \gamma \max_{a'} Q(S', a') - Q(S,A)\big], \]</p>
+  <p>where the term \(\max_{a'} Q(S', a')\) represents the value of taking the best possible action in the next state【383042497754579†L117-L129】.  This decoupling allows the behaviour policy to remain exploratory (for instance, ε‑greedy) while learning the optimal greedy policy.  The same article notes that an ε‑greedy policy chooses the action with the highest estimated Q‑value with probability \(1-ε\) and a random action with probability \(ε\)【383042497754579†L131-L141】.</p>
+  <p>In the pricing environment, Q‑learning uses the observed reward and the maximum of the next state’s Q‑values to update the current estimate.  Because there is only one state in this toy problem (the decision of which price to offer), the update simplifies: the agent always bootstraps toward the highest estimated return.  Over time, the Q‑table converges to the optimal pricing strategy.</p>
+  <pre><code class="python">def q_learning(num_episodes=5000, alpha=0.1, gamma=0.9, epsilon=0.1):
+    Q = np.zeros((1, 2))
+    for _ in range(num_episodes):
+        for t in range(5):
+            # ε‑greedy action selection
+            if np.random.rand() &lt; epsilon:
+                a = np.random.choice([0, 1])
+            else:
+                a = np.argmax(Q[0])
+            price = prices[a]
+            sale_prob = 0.6 if a == 0 else 0.4
+            r = price if np.random.rand() &lt; sale_prob else 0.0
+            # compute TD target using greedy action
+            td_target = r + gamma * np.max(Q[0])
+            Q[0, a] += alpha * (td_target - Q[0, a])
+    return Q
+
+Q_qlearn = q_learning()
+print("Q-learning Q-values:", Q_qlearn)
+</code></pre>
+
+  <h2>9.3 Expected SARSA</h2>
+  <p><strong>Expected SARSA</strong> is an algorithm that interpolates between SARSA and Q‑learning.  Whereas SARSA uses the value of the actual next action and Q‑learning uses the value of the greedy next action, Expected SARSA uses the expected value of the next state under the current policy.  The Datacamp tutorial explains that Expected SARSA calculates the expected value of the next state by averaging the Q‑values of all actions weighted by their selection probability under the policy【62692403283386†L23-L40】.  Because it averages over all possible actions rather than sampling a single one, the update has lower variance than SARSA.</p>
+  <p>Suppose the policy is ε‑greedy.  In that case, each action has a probability \(ε/\text{numActions}\) of being chosen at random, except for the greedy action which has probability \(1-ε + ε/\text{numActions}\).  The Expected SARSA update rule is then</p>
+  <p>\[ Q(s_t,a_t) \leftarrow Q(s_t,a_t) + \alpha \big[r_{t+1} + \gamma \, \mathbb E_{a' \sim \pi} [Q(s_{t+1},a')] - Q(s_t,a_t)\big]. \]</p>
+  <p>The following code implements Expected SARSA for the pricing problem.  We compute the expected next value by averaging the two Q‑values according to the ε‑greedy probabilities.</p>
+  <pre><code class="python">def expected_sarsa(num_episodes=5000, alpha=0.1, gamma=0.9, epsilon=0.1):
+    Q = np.zeros((1, 2))
+    for _ in range(num_episodes):
+        for t in range(5):
+            # choose action via ε‑greedy
+            if np.random.rand() &lt; epsilon:
+                a = np.random.choice([0, 1])
+            else:
+                a = np.argmax(Q[0])
+            price = prices[a]
+            sale_prob = 0.6 if a == 0 else 0.4
+            r = price if np.random.rand() &lt; sale_prob else 0.0
+            # compute expected next value under ε‑greedy policy
+            greedy_action = np.argmax(Q[0])
+            probs = np.array([epsilon/2, epsilon/2])
+            probs[greedy_action] += 1 - epsilon
+            expected_value = np.dot(probs, Q[0])
+            # update Q-value
+            Q[0, a] += alpha * (r + gamma * expected_value - Q[0, a])
+    return Q
+
+Q_expected = expected_sarsa()
+print("Expected SARSA Q-values:", Q_expected)
+</code></pre>
+
+  <h2>9.4 Double Q‑Learning</h2>
+  <p>Standard Q‑learning tends to overestimate action values because the maximum over estimated Q‑values tends to exceed the true expectation of the maximum.  <strong>Double Q‑learning</strong> mitigates this overestimation bias by maintaining two independent estimators of the action‑value function.  A Medium article on Double DQN explains that the algorithm duplicates the neural network architecture (or, in the tabular case, two Q‑tables) to separate action selection from evaluation【842871163940302†L51-L60】.  At each update, one estimator is used to select the greedy action and the other is used to evaluate it; then the roles are swapped with some probability.  By de‑correlating selection and evaluation, Double Q‑learning produces more accurate value estimates and leads to more stable learning【842871163940302†L51-L60】.</p>
+  <p>In a tabular setting with two actions, the algorithm maintains two tables \(Q^A\) and \(Q^B\).  On each step, it chooses one of the tables at random to update.  Suppose table \(Q^A\) is selected.  The update then uses \(Q^A\) to select the next action \(\hat a = \arg\max_a Q^A(S',a)\) and uses \(Q^B\) to evaluate it:</p>
+  <p>\[ Q^A(S,A) \leftarrow Q^A(S,A) + \alpha \big[R + \gamma Q^B(S',\hat a) - Q^A(S,A)\big]. \]</p>
+  <p>The roles of \(Q^A\) and \(Q^B\) are swapped when \(Q^B\) is selected for update.  Averaging the two tables can be used to derive the overall policy.</p>
+  <pre><code class="python">def double_q_learning(num_episodes=5000, alpha=0.1, gamma=0.9, epsilon=0.1):
+    QA = np.zeros((1, 2))
+    QB = np.zeros((1, 2))
+    for _ in range(num_episodes):
+        for t in range(5):
+            # choose action via ε‑greedy using the average of QA and QB
+            Qavg = (QA + QB) / 2.0
+            if np.random.rand() &lt; epsilon:
+                a = np.random.choice([0, 1])
+            else:
+                a = np.argmax(Qavg[0])
+            price = prices[a]
+            sale_prob = 0.6 if a == 0 else 0.4
+            r = price if np.random.rand() &lt; sale_prob else 0.0
+            # randomly choose which table to update
+            if np.random.rand() &lt; 0.5:
+                # update QA using greedy action from QA evaluated by QB
+                greedy_next = np.argmax(QA[0])
+                td_target = r + gamma * QB[0, greedy_next]
+                QA[0, a] += alpha * (td_target - QA[0, a])
+            else:
+                # update QB using greedy action from QB evaluated by QA
+                greedy_next = np.argmax(QB[0])
+                td_target = r + gamma * QA[0, greedy_next]
+                QB[0, a] += alpha * (td_target - QB[0, a])
+    return (QA + QB) / 2.0
+
+Q_double = double_q_learning()
+print("Double Q-learning Q-values:", Q_double)
+</code></pre>
+
+  <div class="sources">
+    <h3>Sources</h3>
+    <ul>
+      <li>The SARSA update rule is defined in the GeeksforGeeks article【322370354307432†L109-L116】.</li>
+      <li>The Q‑learning update rule and ε‑greedy exploration strategy are described in GeeksforGeeks【383042497754579†L117-L129】【383042497754579†L131-L141】.</li>
+      <li>Expected SARSA uses the expected value of the next state rather than sampling a single action【62692403283386†L23-L40】.</li>
+      <li>Double Q‑learning mitigates overestimation bias by duplicating the value estimator【842871163940302†L51-L60】.</li>
+    </ul>
+  </div>
+</body>
+</html>

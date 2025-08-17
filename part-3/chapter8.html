@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter&nbsp;8 – Monte Carlo &amp; Temporal‑Difference Learning</title>
+  <style>
+    body {
+      background-color: #ffffff;
+      font-family: "Georgia", "Times New Roman", serif;
+      color: #333333;
+      line-height: 1.6;
+      margin: 40px;
+    }
+    h1, h2, h3 {
+      color: #003366;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 15px;
+      border-left: 3px solid #cccccc;
+      overflow-x: auto;
+    }
+    code {
+      font-family: "Courier New", monospace;
+      font-size: 0.9em;
+    }
+    .sources {
+      font-size: 0.9em;
+      border-top: 1px solid #cccccc;
+      margin-top: 40px;
+      padding-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Chapter 8 – Monte Carlo &amp; Temporal‑Difference Learning</h1>
+
+  <p>Monte Carlo (MC) and temporal‑difference (TD) learning are two families of value estimation algorithms that allow an agent to estimate the returns from states and state–action pairs without knowing the dynamics of the underlying Markov decision process (MDP).  Both methods update estimates by sampling episodes and using the observed rewards, but they differ in how much bootstrapping they perform.  This chapter introduces the core MC and TD algorithms, highlights their connections, and demonstrates their implementation on a simple pricing problem.</p>
+
+  <h2>8.1 First‑Visit and Every‑Visit Monte Carlo</h2>
+  <p>Monte Carlo methods estimate state values by running complete episodes and using the observed returns to update estimates.  Because they do not require knowledge of the transition probabilities or reward distributions, MC algorithms are useful when the environment is a “black box.”  In a prediction setting, an agent records the sequence of states and rewards during an episode, computes the return <em>G</em><sub>t</sub> for each time step, and then uses these returns to update the value function.</p>
+  <p>There are two common MC prediction strategies.  <strong>First‑visit Monte Carlo</strong> updates the value of a state only the first time it appears in an episode.  The algorithm traverses the episode, identifies the first occurrence of each state and then averages the returns following those occurrences.  According to the Analytics Vidhya tutorial, first‑visit MC averages returns only for the first time a state is visited in an episode【834986228956861†L473-L476】.  This approach reduces variance because each episode contributes at most one sample for each state.</p>
+  <p>In contrast, <strong>every‑visit Monte Carlo</strong> updates the value estimate for every occurrence of a state within an episode.  Each time a state appears, the return following that time step is appended to the list of returns for that state.  The same tutorial notes that every‑visit MC averages returns for every time a state is visited during an episode【834986228956861†L489-L495】.  Because every occurrence contributes an update, the estimates may converge faster but can exhibit slightly higher variance.</p>
+  <p>When implementing MC methods, it is convenient to maintain an incremental mean of the observed returns instead of storing all past returns.  The value estimate can be updated via an incremental update rule
+  \[V(s) \leftarrow V(s) + \alpha\big(G_t - V(s)\big),\]
+  where \(\alpha\) is a constant step‑size parameter【834986228956861†L521-L523】.  A policy used for MC control must ensure that all state–action pairs are explored.  One way to guarantee exploration is to use an <em>ε‑soft policy</em>: with probability \(1-ε\) select the action that maximises the value estimate and with probability \(ε\) select a random action【834986228956861†L552-L569】.  MC control with exploring starts or ε‑greedy policies therefore gradually improves the policy while continuing to explore.</p>
+  <p>The following Python code illustrates first‑visit Monte Carlo on a simple pricing problem.  In our toy environment, an agent repeatedly offers one of two prices for a product (\$10 or \$12).  The environment returns a random sale probability that depends on the price.  The goal is to estimate the value of each pricing decision—the expected discounted revenue over an episode.  We simulate episodes, compute returns, and update the value estimates only the first time each price appears in an episode.</p>
+  <pre><code class="python">import numpy as np
+
+# Two possible price actions: 0 corresponds to $10, 1 corresponds to $12
+prices = np.array([10, 12])
+
+def simulate_episode():
+    """Generate an episode of (action, reward) pairs."""
+    episode = []
+    for t in range(5):
+        # randomly choose an action according to a uniform exploring policy
+        action = np.random.choice([0, 1])
+        price = prices[action]
+        # sale probability decreases slightly with higher price
+        sale_prob = 0.6 if action == 0 else 0.4
+        reward = price if np.random.rand() &lt; sale_prob else 0.0
+        episode.append((action, reward))
+    return episode
+
+def first_visit_mc(num_episodes=1000, gamma=0.9):
+    value = np.zeros(2)
+    returns_count = np.zeros(2)
+    for _ in range(num_episodes):
+        episode = simulate_episode()
+        # compute returns
+        G = 0.0
+        # store first occurrence times for each action
+        first_occurrence = {}
+        for idx, (action, _) in enumerate(episode):
+            if action not in first_occurrence:
+                first_occurrence[action] = idx
+        # compute discounted return backward
+        discounted_returns = np.zeros(len(episode))
+        for t in reversed(range(len(episode))):
+            G = gamma * G + episode[t][1]
+            discounted_returns[t] = G
+        for action, first_t in first_occurrence.items():
+            returns_count[action] += 1
+            # incremental mean update
+            value[action] += (discounted_returns[first_t] - value[action]) / returns_count[action]
+    return value
+
+values = first_visit_mc()
+print(f"Estimated returns for price $10 and $12: {values}")
+</code></pre>
+
+  <h2>8.2 TD(0) and n‑Step Temporal‑Difference Learning</h2>
+  <p>Temporal‑difference learning bridges the gap between Monte Carlo and dynamic programming.  Instead of waiting until the end of an episode to compute the actual return, TD methods bootstrap by using the current estimate of the value function to form a one‑step target.  This allows incremental updates after every step and often reduces variance at the cost of introducing some bias.</p>
+  <p>The simplest TD algorithm for policy evaluation is <strong>TD(0)</strong>.  Given a sequence of states \(S_t\) and rewards \(R_{t+1}\) generated under a policy, the value function is updated after every time step using the rule
+  \[V(S_t) \leftarrow (1 - \alpha) V(S_t) + \alpha\big[R_{t+1} + \gamma V(S_{t+1})\big],\]
+  where \(\alpha\) is the step‑size and \(\gamma\) the discount factor【326832390708723†L343-L381】.  The term \(R_{t+1} + \gamma V(S_{t+1})\) is known as the TD target and the difference between this target and the current estimate is the TD error.  Unlike Monte Carlo, the TD target depends on the existing value estimate and thus involves bootstrapping.</p>
+  <p>TD methods can be generalised to <strong>n‑step TD</strong>, where the target uses the return accumulated over the next \(n\) time steps plus the estimated value of the state at step \(t+n\).  As \(n\) increases, the algorithm becomes more like a Monte Carlo method; as \(n\) decreases to 1, it resembles TD(0).  Choosing \(n\) trades off bias and variance: larger \(n\) values reduce bias but increase variance because they depend on longer trajectories.</p>
+  <p>The code below implements TD(0) for the same pricing environment used earlier.  The agent maintains a value estimate for each price and updates it after each step using the one‑step TD target.</p>
+  <pre><code class="python">import numpy as np
+
+def td_zero(num_episodes=1000, alpha=0.1, gamma=0.9):
+    value = np.zeros(2)
+    for _ in range(num_episodes):
+        # initialise a random action
+        action = np.random.choice([0, 1])
+        price = prices[action]
+        sale_prob = 0.6 if action == 0 else 0.4
+        reward = price if np.random.rand() &lt; sale_prob else 0.0
+        # choose next action from epsilon‑greedy behaviour
+        next_action = np.random.choice([0, 1])
+        next_price = prices[next_action]
+        sale_prob_next = 0.6 if next_action == 0 else 0.4
+        reward_next = next_price if np.random.rand() &lt; sale_prob_next else 0.0
+        # TD(0) update for current state–action
+        td_target = reward + gamma * value[next_action]
+        value[action] += alpha * (td_target - value[action])
+    return value
+
+td_values = td_zero()
+print(f"TD(0) estimated returns for price $10 and $12: {td_values}")
+</code></pre>
+
+  <h2>8.3 Eligibility Traces and TD(λ)</h2>
+  <p>Eligibility traces extend TD learning by keeping a memory of recently visited states and weighting their updates according to how recently they occurred.  When a TD error is observed, not only the current state but also previous states on the trajectory are updated.  The eligibility of each state decays geometrically over time, so more recent states receive larger updates.</p>
+  <p>A convenient way to view eligibility traces is through the <strong>TD(λ)</strong> algorithm, which interpolates between Monte Carlo and TD(0).  The parameter \(\lambda \in [0,1]\) determines the decay rate of the trace.  When \(\lambda = 0\), TD(λ) reduces to TD(0); when \(\lambda = 1\), it approximates a Monte Carlo method because the algorithm uses returns over entire episodes.  The TD learning article on Wikipedia notes that the parameter \(\lambda\) controls trace decay and that setting \(\lambda = 1\) recovers Monte Carlo behaviour【326832390708723†L393-L398】.</p>
+  <p>The backward view of TD(λ) maintains an eligibility trace \(e(s)\) for each state.  At time step \(t\), the trace of the current state is incremented (typically by 1) and the traces of all states are multiplied by \(\lambda\gamma\).  Then the TD error \(\delta_t = R_{t+1} + \gamma V(S_{t+1}) - V(S_t)\) is computed, and every state’s value is updated proportionally to its eligibility: \(V(s) \leftarrow V(s) + \alpha \, e(s) \, \delta_t\).  This allows credit to be assigned to states that occurred several steps before the reward.</p>
+  <p>The following pseudocode outlines a TD(λ) implementation for the pricing problem.  For simplicity the code uses a small state–space and updates eligibility traces and values after each step.</p>
+  <pre><code class="python">def td_lambda(num_episodes=1000, alpha=0.1, gamma=0.9, lam=0.8):
+    value = np.zeros(2)
+    for _ in range(num_episodes):
+        elig = np.zeros(2)
+        # generate an episode of fixed length
+        for t in range(5):
+            action = np.random.choice([0, 1])
+            price = prices[action]
+            sale_prob = 0.6 if action == 0 else 0.4
+            reward = price if np.random.rand() &lt; sale_prob else 0.0
+            # choose next action for bootstrapping
+            next_action = np.random.choice([0, 1])
+            # TD error
+            td_error = reward + gamma * value[next_action] - value[action]
+            # update eligibility of current action
+            elig[action] += 1
+            # update all value estimates
+            value += alpha * td_error * elig
+            # decay eligibility traces
+            elig *= gamma * lam
+    return value
+
+lambda_values = td_lambda()
+print(f"TD(lambda) estimated returns: {lambda_values}")
+</code></pre>
+
+  <h2>8.4 Bias–Variance Trade‑offs</h2>
+  <p>Monte Carlo and temporal‑difference algorithms represent two ends of a spectrum in terms of bias and variance.  Pure MC methods produce unbiased estimates of expected returns because they use complete returns from episodes.  However, these estimates often exhibit high variance since returns can vary widely between episodes, especially in stochastic environments.  On the other hand, TD methods bootstrap, using the current value estimates to form targets.  This reduces variance but introduces bias because the targets depend on imperfect estimates.</p>
+  <p>Increasing the number of steps used in the return (for example, moving from TD(0) to TD(\(n\)‑step) or increasing \(\lambda\) in TD(λ)) reduces bias by relying more on actual rewards.  Unfortunately this also increases variance since longer trajectories introduce more randomness.  Conversely, smaller \(n\) or \(\lambda\) leads to stronger bootstrapping and lower variance at the cost of more bias.  Choosing appropriate values for \(n\) or \(\lambda\) therefore entails a trade‑off: tasks with noisy rewards may benefit from lower variance while tasks with deterministic rewards may prefer more Monte Carlo‑like returns.</p>
+  <p>In practice, practitioners often experiment with several \(\lambda\) values or employ adaptive schemes that adjust \(\lambda\) over time.  An advantage of eligibility traces is that they unify the forward (n‑step) and backward views, making it straightforward to interpolate between the extremes of MC and TD.  Ultimately, the choice depends on the environment’s dynamics, reward structure and the desired balance between convergence speed and stability.</p>
+
+  <div class="sources">
+    <h3>Sources</h3>
+    <ul>
+      <li>Analytics Vidhya: explanation of first‑visit and every‑visit Monte Carlo and incremental mean update【834986228956861†L473-L476】【834986228956861†L489-L495】【834986228956861†L521-L523】.</li>
+      <li>ε‑soft policies ensure exploration in Monte Carlo control【834986228956861†L552-L569】.</li>
+      <li>Temporal‑difference learning update rule for TD(0)【326832390708723†L343-L381】.</li>
+      <li>TD‑λ uses eligibility traces; setting λ = 1 recovers Monte Carlo behaviour【326832390708723†L393-L398】.</li>
+    </ul>
+  </div>
+</body>
+</html>
