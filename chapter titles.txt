@@ -1,46 +1,4 @@
 
-Part V — Structure & Constraints
-
-18. Hierarchical & Goal‑Conditioned RL
-
-Options & Skills
-
-Subgoal Discovery
-
-Goal‑Conditioned Policies
-
-Hindsight Experience Replay (HER)
-
-19. Offline & Batch RL
-
-Off‑Policy Evaluation (IS, WIS, DR)
-
-Batch‑Constrained Q‑Learning (BCQ)
-
-BEAR & CQL
-
-Distribution Shift & Conservatism
-
-20. Safe & Risk‑Sensitive RL
-
-Constrained MDPs
-
-Risk Measures (CVaR)
-
-Robust MDPs
-
-Shielding & Safety‑Critical Evaluation
-
-21. Multi‑Agent RL
-
-Markov Games
-
-Centralized Training, Decentralized Execution
-
-Cooperation vs. Competition
-
-Opponent Modeling & Equilibria
-
 Part VI — Imitation, Preferences & LLMs
 
 22. Imitation & Inverse RL
@@ -201,4 +159,5 @@ Open Problems & Trends
 
 
 Community & Conferences
+
 
