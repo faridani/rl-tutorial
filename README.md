@@ -1,5 +1,15 @@
 # rl-tutorial
 Tutorials for Learning Reinforcement Learning for Smart People 
 
-* Q-Learning, SARSA, Double Q-Learning Lab [lab and tutorial](https://html-preview.github.io/?url=https://github.com/faridani/rl-tutorial/blob/main/q-learning-lab.html)
-* Online tutorials worthy of your time [other-resources.html](https://html-preview.github.io/?url=https://github.com/faridani/rl-tutorial/blob/main/other-resources.html)
+Download the course material first and then use the following links to go through the material 
+
+
+# Chapter 1 - Mathmetics for RL
+The following two lessons should prepare you for almost all of the math that you will see in RL 
+* College level mathematics [quick tutorial](basic_math.html)
+* 1st year grad level mathematics [quick tutorial](more_math.html)
+
+# Chapter 2
+
+* Q-Learning, SARSA, Double Q-Learning Lab [lab and tutorial](q-learning-lab.html)
+* Online tutorials worthy of your time [other-resources.html](other-resources.html)
