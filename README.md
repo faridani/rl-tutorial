@@ -8,6 +8,14 @@ Download the course material first and then use the following links to go throug
 The following two lessons should prepare you for almost all of the math that you will see in RL 
 ## Chapter 0-1: College level mathematics  [visit lesson](part-0/basic_math.html)
 ## Chapter 0-2: 1st year grad level mathematics  [visit lesson](part-0/more_math.html)
+* Introduction
+* Linear Algebra
+* Probability Theory
+* Calculus and Optimization
+* Dynamic Programming
+* Functional Analysis
+
+Information Theory
 ## Chapter 0-3: RL with Python  [visit lesson](part-0/rl_in_python.html)
 * Introduction
 * Doing Math in Python
