@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 16 – Maximum Entropy &amp; Continuous Control</title>
+  <style>
+    body { background-color: #ffffff; font-family: "Georgia", serif; margin: 40px; line-height: 1.6; color: #333333; }
+    pre { background: #f4f4f4; padding: 10px; border-left: 4px solid #cccccc; overflow-x: auto; }
+    code { font-family: monospace; }
+    h1, h2, h3 { color: #222222; }
+  </style>
+</head>
+<body>
+  <h1>Chapter 16 – Maximum Entropy &amp; Continuous Control</h1>
+  <p>
+    Many real‑world problems involve continuous action spaces, such as setting a price on a
+    continuous scale or controlling the velocity of a robot.  Maximum entropy reinforcement
+    learning extends policy gradient methods by adding an entropy term to the objective, thereby
+    encouraging policies that remain stochastic even as they achieve high rewards.  This chapter
+    introduces Soft Actor–Critic (SAC), Twin Delayed Deep Deterministic Policy Gradient (TD3), the
+    original Deterministic Policy Gradient (DDPG) algorithm and discusses practical issues such as
+    action squashing and exploration noise.
+  </p>
+
+  <h2>16.1 Soft Actor–Critic (SAC)</h2>
+  <p>
+    Soft Actor–Critic is an off‑policy actor–critic algorithm that maximises the expected return
+    plus the entropy of the policy.  The soft value function is defined as
+    \(V(s) = \mathbb{E}_{a\sim\pi}[Q(s,a) - \alpha \log \pi(a|s)]\), where \(\alpha > 0\) is a
+    temperature parameter trading off reward and entropy.  The Q‑function is trained using a
+    soft Bellman backup:
+    \(Q(s,a) = r + \gamma \mathbb{E}_{s'\sim p}[V(s')]\)【476298955389460†L1053-L1123】.
+    The policy is updated by minimizing the Kullback–Leibler divergence between the current policy
+    and an exponential of the soft Q‑function, yielding a closed‑form update for Gaussian policies.
+    SAC uses separate networks for the policy, Q‑functions and value function, and employs two Q
+    networks with a minimum operator to mitigate overestimation bias, similar to double Q‑learning.
+  </p>
+  <p>
+    A hallmark of SAC is its sample efficiency: because it is off‑policy, the algorithm can
+    reuse past experiences stored in a replay buffer, and the entropy term encourages broad
+    exploration.  In continuous pricing tasks, SAC can learn to adjust prices smoothly over time
+    while maintaining a degree of randomness that allows the agent to test nearby price points.
+    The temperature \(\alpha\) can be fixed or learned automatically to target a desired level of
+    entropy, ensuring a good balance between exploration and exploitation【476298955389460†L1053-L1123】.
+  </p>
+  <p>
+    Below is a highly simplified SAC implementation for a one‑dimensional continuous control
+    problem.  The policy network outputs the mean and standard deviation of a Gaussian, and the
+    sampled action is passed through a hyperbolic tangent to enforce bounds.  The Q networks and
+    value network are updated via soft Bellman backups.  Due to space, only key steps are shown;
+    a full implementation would include separate target networks, entropy adjustment and twin Q
+    networks.
+  </p>
+  <pre><code class="language-python">import torch
+import torch.nn as nn
+import torch.optim as optim
+
+class GaussianPolicy(nn.Module):
+    def __init__(self, state_dim, action_dim, hidden_dim=64):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim), nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim), nn.ReLU()
+        )
+        self.mean = nn.Linear(hidden_dim, action_dim)
+        self.log_std = nn.Linear(hidden_dim, action_dim)
+
+    def forward(self, state):
+        x = self.net(state)
+        mean = self.mean(x)
+        log_std = self.log_std(x).clamp(-20, 2)
+        std = log_std.exp()
+        return mean, std
+
+    def sample(self, state):
+        mean, std = self(state)
+        normal = torch.distributions.Normal(mean, std)
+        z = normal.rsample()
+        action = torch.tanh(z)  # squash to (-1,1)
+        log_prob = normal.log_prob(z) - torch.log(1 - action.pow(2) + 1e-6)
+        return action, log_prob.sum(dim=-1, keepdim=True)
+
+class SoftQNetwork(nn.Module):
+    def __init__(self, state_dim, action_dim, hidden_dim=64):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(state_dim + action_dim, hidden_dim), nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim), nn.ReLU(),
+            nn.Linear(hidden_dim, 1)
+        )
+
+    def forward(self, state, action):
+        return self.net(torch.cat([state, action], dim=-1))
+  </code></pre>
+
+  <h2>16.2 Twin Delayed DDPG (TD3)</h2>
+  <p>
+    Deep Deterministic Policy Gradient (DDPG) extends actor–critic methods to continuous action
+    spaces by using a deterministic policy and a critic trained with the Bellman equation.  While
+    effective, DDPG suffers from overestimation bias and high variance due to function
+    approximation.  Twin Delayed DDPG (TD3) improves upon DDPG through three modifications: (1)
+    <strong>Clipped double Q‑learning</strong>, which uses the minimum of two critic networks to form the
+    target, reducing overestimation; (2) <strong>Delayed policy updates</strong>, where the actor network is
+    updated less frequently than the critic to stabilise training; and (3) <strong>Target policy
+    smoothing</strong>, which adds noise to the target action and clips it to the valid range, providing
+    a form of regularisation【476298955389460†L1319-L1357】.
+  </p>
+  <p>
+    These modifications make TD3 robust on a wide range of continuous control tasks.  In pricing
+    problems with continuous price ranges, TD3 can learn a smooth mapping from market state to price
+    while avoiding overestimation of future returns.  The delayed policy update means the actor
+    network is only adjusted after several critic updates, allowing the critic to provide more
+    accurate gradients.  Target smoothing prevents the policy from exploiting sharp peaks in the Q
+    function, yielding more realistic actions.
+  </p>
+  <p>
+    The following pseudo‑code summarises the TD3 update procedure: sample a minibatch from the
+    replay buffer; compute target actions by adding clipped Gaussian noise to actions from the
+    target actor; evaluate the target Q value using the minimum of the two target critics; update
+    the critics by minimising the MSE between predicted and target Q values; every <em>policy_delay</em>
+    steps, update the actor by maximising the predicted Q value and perform a soft update of the
+    target networks【476298955389460†L1319-L1357】.  Implementing TD3 requires careful tuning of
+    the noise standard deviation and delay parameter but often yields strong performance.
+  </p>
+
+  <h2>16.3 Deterministic policy gradient &amp; DDPG</h2>
+  <p>
+    The deterministic policy gradient theorem states that under certain regularity conditions the
+    gradient of the expected return for a deterministic policy \(\mu_\theta(s)\) can be written as
+    \(\nabla_\theta J(\theta) = \mathbb{E}[\nabla_\theta \mu_\theta(s) \nabla_a Q^{\mu}(s,a)|_{a=\mu_\theta(s)}]\).
+    This result motivates DDPG, which uses a deterministic actor network to output a continuous
+    action and a critic network to estimate the Q‑function.  DDPG is off‑policy and employs a
+    replay buffer and target networks, similar to DQN.  It was one of the first algorithms to
+    solve continuous control tasks with high‑dimensional state spaces.
+  </p>
+  <p>
+    In practice DDPG often exhibits unstable learning due to overestimation and the coupling
+    between actor and critic.  Techniques such as target policy smoothing and delayed updates
+    introduced in TD3 help mitigate these issues.  Nevertheless, DDPG remains a useful baseline
+    and illustrates how deterministic policies can be optimised using gradient information.  When
+    applying DDPG to pricing, the actor outputs a continuous price which is then clipped to the
+    valid range.  The critic learns to estimate the long‑term profit for each price given the
+    state.
+  </p>
+  <p>
+    The pseudo‑code below outlines the core DDPG update: sample a batch from the replay memory;
+    compute the target Q value using the target networks; update the critic by minimising the MSE
+    between predicted and target Q values; update the actor by maximising the critic’s estimate;
+    finally, softly update the target networks.  For brevity we omit full code, focusing instead
+    on the conceptual steps that are shared with TD3.
+  </p>
+
+  <h2>16.4 Action squashing &amp; exploration noise</h2>
+  <p>
+    Continuous action policies often need to produce bounded outputs.  A common technique is to
+    parameterise the policy with unbounded variables and apply a squashing function such as
+    \(\tanh\) or the logistic function to map them into a desired interval, e.g., \((-1,1)\) or
+    \([0,1]\).  This ensures that the actor cannot produce invalid prices or control commands.
+    When learning with squashed actions, one must account for the change of variables in the
+    log‑probability; in SAC the Jacobian determinant of the \(\tanh\) transformation is subtracted
+    from the log probability of the Gaussian policy【476298955389460†L1053-L1123】.
+  </p>
+  <p>
+    Exploration in continuous spaces typically relies on adding noise to the actions.  In
+    deterministic algorithms like DDPG and TD3, <em>Ornstein–Uhlenbeck</em> (OU) noise is often used to
+    generate temporally correlated exploration trajectories; OU noise produces smooth variations
+    reminiscent of physical systems.  Alternatively, Gaussian noise can be added directly to the
+    action or to the policy parameters.  In SAC, exploration arises naturally from the stochastic
+    policy and entropy term, so no external noise is required.
+  </p>
+  <p>
+    The following snippet generates OU noise and demonstrates how to combine it with a deterministic
+    action.  When implementing DDPG or TD3 in a pricing context, the agent computes a base price
+    from the actor and then adds noise to encourage exploration.  The noise scale is gradually
+    reduced over training to focus more on exploitation once a good policy is found.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+class OUNoise:
+    def __init__(self, mu=0.0, theta=0.15, sigma=0.2, dt=1e-2):
+        self.mu = mu
+        self.theta = theta
+        self.sigma = sigma
+        self.dt = dt
+        self.x_prev = 0.0
+
+    def reset(self):
+        self.x_prev = 0.0
+
+    def __call__(self):
+        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt \
+            + self.sigma * np.sqrt(self.dt) * np.random.randn()
+        self.x_prev = x
+        return x
+
+# Example usage
+ou = OUNoise(mu=0.0, theta=0.15, sigma=0.2)
+action_deterministic = 0.5  # base action
+for _ in range(5):
+    noisy_action = action_deterministic + ou()
+    print(noisy_action)
+  </code></pre>
+
+  <h2>Sources</h2>
+  <p>
+    The description of soft actor–critic is based on Lilian Weng’s presentation of maximum entropy
+    RL【476298955389460†L1053-L1123】.  TD3’s three improvements over DDPG – clipped double Q‑learning,
+    delayed policy updates and target policy smoothing – are summarised in the same resource【476298955389460†L1319-L1357】.
+    The discussion of squashing functions and entropy terms draws on the derivation of SAC
+    【476298955389460†L1053-L1123】.  While deterministic policy gradients and exploration noise are not
+    directly cited, they follow standard RL practices and are included here for completeness.
+  </p>
+</body>
+</html>

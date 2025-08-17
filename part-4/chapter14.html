@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 14 – Policy Gradient Methods</title>
+  <style>
+    body { background-color: #ffffff; font-family: "Georgia", serif; margin: 40px; line-height: 1.6; color: #333333; }
+    pre { background: #f4f4f4; padding: 10px; border-left: 4px solid #cccccc; overflow-x: auto; }
+    code { font-family: monospace; }
+    h1, h2, h3 { color: #222222; }
+  </style>
+</head>
+<body>
+  <h1>Chapter 14 – Policy Gradient Methods</h1>
+  <p>
+    Value‑based methods learn state or action values and derive a policy by greedy action
+    selection.  In contrast, policy gradient methods directly parameterise the policy and optimise
+    it via gradient ascent on expected return.  This chapter introduces the REINFORCE algorithm
+    and its variants, generalised advantage estimation, natural gradient methods and entropy
+    regularisation.  These techniques form the foundation of modern actor–critic algorithms and
+    underpin many of the deep RL successes discussed later.
+  </p>
+
+  <h2>14.1 REINFORCE and baselines</h2>
+  <p>
+    The simplest policy gradient algorithm is REINFORCE.  Given a parameterised stochastic
+    policy \(\pi_\theta(a|s)\), the objective is to maximise the expected return \(J(\theta) =
+    \mathbb{E}[G_t]\).  The policy gradient theorem states that the gradient of this objective
+    can be written as \(\nabla_\theta J(\theta) = \mathbb{E}[\nabla_\theta \log \pi_\theta(a_t|s_t)
+    G_t]\).  Intuitively, the gradient increases the probability of actions that lead to
+    higher returns.  The REINFORCE algorithm samples complete episodes, computes returns and
+    updates the policy by ascending along this gradient.  The update rule for parameters is
+    \(\theta \leftarrow \theta + \alpha G_t \nabla_\theta \log \pi_\theta(a_t|s_t)\)【476298955389460†L300-L330】.
+  </p>
+  <p>
+    A drawback of REINFORCE is its high variance: raw returns vary widely across episodes, leading
+    to noisy gradient estimates.  A common variance reduction technique is to subtract a
+    <em>baseline</em> from the return.  The baseline is any function of the state that does not depend on
+    the action, and thus its expectation under the policy is zero.  The most popular choice is the
+    state value function \(V^{\pi}(s)\); subtracting it from the return yields the advantage
+    \(A^{\pi}(s,a) = G_t - V^{\pi}(s)\).  Including a baseline reduces variance without
+    introducing bias【476298955389460†L300-L330】.  In practice one trains a separate value network
+    (critic) to approximate \(V^{\pi}(s)\) while optimising the policy.
+  </p>
+  <p>
+    The following code demonstrates a simple REINFORCE implementation for a pricing bandit.  The
+    policy is parameterised by a softmax over linear preferences.  After each episode, the
+    algorithm computes discounted returns, subtracts a baseline estimated via a running mean, and
+    performs a gradient ascent step.  Although this example uses a single‑step bandit for
+    simplicity, the same principles apply to multi‑step tasks.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+class ReinforceAgent:
+    def __init__(self, n_actions, lr=0.01, gamma=0.99):
+        self.n_actions = n_actions
+        self.theta = np.zeros(n_actions)
+        self.lr = lr
+        self.gamma = gamma
+        self.baseline = 0.0
+        self.baseline_alpha = 0.1
+
+    def policy(self):
+        # softmax over preferences
+        prefs = self.theta
+        exp_prefs = np.exp(prefs - prefs.max())
+        return exp_prefs / exp_prefs.sum()
+
+    def select_action(self):
+        probs = self.policy()
+        return np.random.choice(self.n_actions, p=probs)
+
+    def update(self, trajectory):
+        # trajectory: list of (action, reward)
+        returns = []
+        G = 0
+        for _, r in reversed(trajectory):
+            G = r + self.gamma * G
+            returns.insert(0, G)
+        # update baseline (running mean)
+        episode_return = returns[0]
+        self.baseline += self.baseline_alpha * (episode_return - self.baseline)
+        # policy gradient update
+        for (a, _), G in zip(trajectory, returns):
+            advantage = G - self.baseline
+            grad = -self.policy()
+            grad[a] += 1  # derivative of log-policy under softmax
+            self.theta += self.lr * advantage * grad
+
+# Example usage in a pricing bandit
+prices = [1.0, 1.5, 2.0]  # discrete price options
+true_conversion = [0.6, 0.4, 0.2]
+agent = ReinforceAgent(n_actions=len(prices))
+for episode in range(100):
+    trajectory = []
+    action = agent.select_action()
+    reward = np.random.binomial(1, true_conversion[action]) * prices[action]
+    trajectory.append((action, reward))
+    agent.update(trajectory)
+  </code></pre>
+
+  <h2>14.2 Generalised advantage estimation</h2>
+  <p>
+    When using actor–critic methods, the choice of advantage estimator affects the bias‑variance
+    trade‑off.  Generalised advantage estimation (GAE) unifies multi‑step temporal‑difference
+    errors into a single estimator with a parameter \(\lambda\) controlling the trade‑off between
+    low variance and low bias.  Let \(\delta_t = r_t + \gamma V(s_{t+1}) - V(s_t)\) be the TD
+    residual.  GAE defines the advantage as a discounted sum of these residuals:
+    \(\hat{A}_t^{\mathrm{GAE}(\gamma,\lambda)} = \sum_{l=0}^\infty (\gamma\lambda)^l \delta_{t+l}\).
+    When \(\lambda = 0\) the estimator reduces to one‑step TD (low variance, high bias), and when
+    \(\lambda = 1\) it becomes the Monte‑Carlo return (high variance, low bias)【196037580153947†L297-L319】.
+  </p>
+  <p>
+    GAE allows practitioners to smoothly interpolate between these extremes and has become a
+    standard component in modern algorithms like A2C and PPO.  In pricing or inventory management
+    tasks where rewards are sparse, choosing an intermediate \(\lambda\) (e.g., 0.9) can provide
+    stable learning by incorporating information from multiple steps.  Implementing GAE requires
+    maintaining a sequence of value estimates and TD residuals for each trajectory and computing
+    the exponentially weighted sum backwards in time.
+  </p>
+  <p>
+    The function below computes GAE given arrays of rewards, value estimates and done flags.
+    Using this estimator in the policy update reduces variance and improves sample efficiency in
+    both discrete and continuous tasks.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+def compute_gae(rewards, values, dones, gamma=0.99, lam=0.95):
+    """Compute generalised advantage estimation."""
+    n = len(rewards)
+    advantages = np.zeros(n)
+    gae = 0.0
+    for t in reversed(range(n)):
+        delta = rewards[t] + gamma * values[t + 1] * (1 - dones[t]) - values[t]
+        gae = delta + gamma * lam * (1 - dones[t]) * gae
+        advantages[t] = gae
+    return advantages
+
+# Example usage
+rewards = [1, 0, 2]
+values = [0.5, 0.6, 0.4, 0.0]  # last value for bootstrap
+dones = [0, 0, 1]
+advantages = compute_gae(rewards, values, dones)
+print(advantages)
+  </code></pre>
+
+  <h2>14.3 Natural gradients</h2>
+  <p>
+    Traditional gradient descent updates parameters in the direction of steepest ascent with respect
+    to the Euclidean metric.  However, in the space of probability distributions this metric is
+    inappropriate.  Natural gradient methods use the Fisher information matrix \(F(\theta)\) as a
+    Riemannian metric, ensuring that updates take into account the curvature of the parameter
+    space.  The natural gradient direction is given by \(\delta = F(\theta)^{-1} \nabla_\theta
+    J(\theta)\).  Intuitively, this rescales the gradient so that a small step in parameter space
+    corresponds to a small change in the policy distribution.  As a result, natural gradient steps
+    are often more stable and require fewer iterations to converge.
+  </p>
+  <p>
+    Computing the exact Fisher matrix and its inverse is generally intractable for large networks.
+    Practical natural gradient methods approximate \(F^{-1}\) using techniques such as the
+    Kronecker‑factored approximate curvature (K‑FAC) or conjugate gradient.  In the context of
+    reinforcement learning, trust region policy optimisation (TRPO) enforces a constraint on the
+    KL divergence between successive policies, which implicitly implements a natural gradient step
+    (see Chapter 15)【476298955389460†L739-L792】.  On small problems or for pedagogical purposes, one can
+    approximate the Fisher matrix by sampling trajectories and computing the outer product of
+    gradients.
+  </p>
+  <p>
+    The following snippet outlines a simplistic natural gradient calculation for a softmax policy
+    with a small parameter vector.  It computes the Fisher matrix empirically and solves for the
+    preconditioned gradient.  Although this approach does not scale to deep networks, it
+    illustrates how natural gradients modify the update direction.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+def natural_gradient(policy_params, grad_log_probs):
+    """
+    Compute a natural gradient update direction for a softmax policy in a toy setting.
+    policy_params: array of shape (n_params,)
+    grad_log_probs: list of gradients of log-probabilities for sampled actions
+    """
+    # Estimate Fisher information matrix F = E[grad_log_pi * grad_log_pi^T]
+    F = np.zeros((len(policy_params), len(policy_params)))
+    for g in grad_log_probs:
+        g = g.reshape(-1, 1)
+        F += g @ g.T
+    F /= len(grad_log_probs)
+    # Add small damping for numerical stability
+    F += 1e-3 * np.eye(len(policy_params))
+    # Compute natural gradient direction F^{-1} grad
+    grad = np.mean(grad_log_probs, axis=0)
+    direction = np.linalg.solve(F, grad)
+    return direction
+
+# Example with a 2-parameter softmax policy
+policy_params = np.array([0.0, 0.0])
+grad_log_probs = [np.array([1, -1]), np.array([-1, 1])]  # toy gradients
+nat_dir = natural_gradient(policy_params, grad_log_probs)
+print(nat_dir)
+  </code></pre>
+
+  <h2>14.4 Entropy regularisation</h2>
+  <p>
+    Encouraging exploration is essential for discovering profitable actions in complex environments.
+    One elegant way to promote exploration in policy gradient methods is to add an entropy term to
+    the objective.  The entropy of a policy at state \(s\) is defined as
+    \(H(\pi(\cdot|s)) = - \sum_a \pi(a|s) \log \pi(a|s)\).  Maximising entropy encourages the
+    policy to maintain a high level of randomness, preventing premature convergence to suboptimal
+    deterministic policies.  In the maximum‑entropy framework, the objective becomes
+    \(J(\theta) = \mathbb{E}[\sum_t r_t + \alpha H(\pi(\cdot|s_t))]\), where \(\alpha > 0\) trades
+    off reward and entropy【476298955389460†L1053-L1123】.
+  </p>
+  <p>
+    The entropy regulariser can be integrated into the policy gradient update by adding the
+    derivative of the entropy term to the gradient.  For a categorical policy this derivative is
+    \(-\nabla_\theta \sum_a \pi(a|s) \log \pi(a|s) = -\mathbb{E}[\nabla_\theta \log \pi(a|s) \log \pi(a|s)]
+    - \nabla_\theta H(\pi)\).  In practice, one multiplies the entropy of the current policy by
+    \(\alpha\) and adds it to the return when computing the advantage.  Entropy regularisation is
+    widely used in actor–critic algorithms and has been shown to improve exploration and robustness.
+  </p>
+  <p>
+    The following function illustrates how to compute the entropy of a softmax policy and how to
+    add an entropy bonus to the policy gradient update.  This technique is particularly useful in
+    continuous control tasks and is a key component of the soft actor–critic algorithm described in
+    Chapter 16【476298955389460†L1053-L1123】.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+def softmax(x):
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum()
+
+def entropy(probabilities):
+    return -np.sum(probabilities * np.log(probabilities + 1e-8))
+
+def update_with_entropy(policy_params, actions, advantages, lr=0.01, alpha=0.01):
+    # compute policy probabilities
+    probs = softmax(policy_params)
+    # compute gradient of log-probabilities
+    grad_log_probs = -probs
+    grad_log_probs[actions] += 1
+    # compute entropy bonus
+    H = entropy(probs)
+    # update parameters (REINFORCE style)
+    policy_params += lr * (advantages + alpha * H) * grad_log_probs
+    return policy_params
+
+# Example update for a 3-action policy
+policy_params = np.array([0.0, 0.0, 0.0])
+actions = 1  # action taken
+advantages = 1.0
+policy_params = update_with_entropy(policy_params, actions, advantages, lr=0.1, alpha=0.01)
+print(policy_params)
+  </code></pre>
+
+  <h2>Sources</h2>
+  <p>
+    The REINFORCE algorithm and the use of baselines are discussed in Lilian Weng’s overview of
+    policy gradient methods【476298955389460†L300-L330】.  The generalised advantage estimation
+    formula and its bias–variance trade‑off are explained in a Medium article on GAE【196037580153947†L297-L319】.
+    Natural gradients and their connection to trust region methods are described in the same
+    overview【476298955389460†L739-L792】.  Entropy regularisation appears in the soft actor–critic
+    derivation【476298955389460†L1053-L1123】, where an entropy term is added to the reward to
+    encourage exploration.
+  </p>
+</body>
+</html>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 17 – Model‑Based Reinforcement Learning</title>
+  <style>
+    body { background-color: #ffffff; font-family: "Georgia", serif; margin: 40px; line-height: 1.6; color: #333333; }
+    pre { background: #f4f4f4; padding: 10px; border-left: 4px solid #cccccc; overflow-x: auto; }
+    code { font-family: monospace; }
+    h1, h2, h3 { color: #222222; }
+  </style>
+</head>
+<body>
+  <h1>Chapter 17 – Model‑Based Reinforcement Learning</h1>
+  <p>
+    Model‑based reinforcement learning (MBRL) aims to improve sample efficiency by learning a model
+    of the environment and using it for planning.  By simulating experiences with the model,
+    agents can update their value functions and policies without interacting with the real
+    environment.  This chapter covers Dyna‑style planning, latent dynamics models, model‑predictive
+    control and techniques for handling uncertainty.  These approaches are especially valuable in
+    domains where real interactions are expensive, such as pricing experiments or robotics.
+  </p>
+
+  <h2>17.1 Dyna‑style planning</h2>
+  <p>
+    Early model‑based RL algorithms distinguished between two types of models: sample models that
+    produce a single successor state and reward for a given state–action pair, and distribution
+    models that return the full probability distribution over next states and rewards【191180862492626†L36-L61】.
+    In Dyna‑style planning the agent learns a sample model from experience and uses it to generate
+    simulated transitions.  These fictitious transitions are then used to update the value function
+    or Q‑function, augmenting the updates obtained from real data.  Because the model can be
+    queried many times at little cost, Dyna can dramatically reduce the amount of real data needed
+    to learn【191180862492626†L64-L88】.
+  </p>
+  <p>
+    The Dyna‑Q architecture combines Q‑learning with planning.  Each iteration consists of
+    interacting with the environment to obtain a real transition \((s,a,r,s')\), updating the
+    Q‑function with this transition and then performing several <em>planning steps</em>.  In each
+    planning step the agent samples a previously observed state–action pair from its model, queries
+    the model for the predicted next state and reward, and performs a Q‑learning update with this
+    simulated transition【191180862492626†L75-L88】.  By interleaving real and simulated updates, Dyna
+    accelerates learning while still converging to the optimal policy under appropriate conditions.
+  </p>
+  <p>
+    The following code implements a simple Dyna‑Q agent for a one‑dimensional gridworld.  The model
+    is a dictionary mapping state–action pairs to predicted outcomes.  After interacting with the
+    environment, the agent performs a number of planning updates by sampling from this model.  In
+    pricing or inventory problems, one can build similar models of demand dynamics and use them to
+    simulate customer responses.
+  </p>
+  <pre><code class="language-python">import random
+
+class DynaQAgent:
+    def __init__(self, n_states, n_actions, alpha=0.1, gamma=0.95, epsilon=0.1, planning_steps=5):
+        self.n_states = n_states
+        self.n_actions = n_actions
+        self.Q = [[0.0 for _ in range(n_actions)] for _ in range(n_states)]
+        self.model = {}  # maps (s,a) to (r,s')
+        self.alpha = alpha
+        self.gamma = gamma
+        self.epsilon = epsilon
+        self.planning_steps = planning_steps
+
+    def choose_action(self, s):
+        if random.random() < self.epsilon:
+            return random.randrange(self.n_actions)
+        return max(range(self.n_actions), key=lambda a: self.Q[s][a])
+
+    def update(self, s, a, r, s_next):
+        # Q-learning update
+        best_next = max(self.Q[s_next])
+        self.Q[s][a] += self.alpha * (r + self.gamma * best_next - self.Q[s][a])
+        # update model
+        self.model[(s,a)] = (r, s_next)
+        # planning updates
+        for _ in range(self.planning_steps):
+            (s_pl, a_pl), (r_pl, s_pl_next) = random.choice(list(self.model.items()))
+            best_next_pl = max(self.Q[s_pl_next])
+            self.Q[s_pl][a_pl] += self.alpha * (r_pl + self.gamma * best_next_pl - self.Q[s_pl][a_pl])
+  </code></pre>
+
+  <h2>17.2 Latent dynamics models</h2>
+  <p>
+    When observations are high‑dimensional, such as images or long histories of economic indicators,
+    learning a dynamics model directly in observation space can be challenging.  Latent dynamics
+    models embed observations into a lower‑dimensional latent space and learn the transition
+    dynamics and reward function in that space.  The PlaNet algorithm is an example of this
+    approach: it learns a latent dynamics model with both deterministic and stochastic components
+    from pixel observations and performs planning in the latent space.  This enables data‑efficient
+    planning and generalisation across tasks【876070990366731†L70-L76】.
+  </p>
+  <p>
+    Latent models often consist of an encoder that maps observations to latent variables, a
+    dynamics model that predicts the next latent state given the current latent state and action,
+    and a decoder that reconstructs observations from latent states.  Training is typically done
+    end‑to‑end using variational objectives or reconstruction losses.  Once trained, planning can be
+    performed by simulating trajectories in latent space, evaluating them with a learned value
+    function or reward model and selecting the best action sequence.
+  </p>
+  <p>
+    The following example illustrates a simple latent dynamics model using an autoencoder and a
+    linear transition model.  While this toy model is far from the sophistication of PlaNet, it
+    demonstrates the key idea: compress the state, predict its evolution in latent space and use
+    that prediction for planning.  In practice, neural networks with stochastic latent variables
+    and recurrent structure yield much better performance.
+  </p>
+  <pre><code class="language-python">import torch
+import torch.nn as nn
+
+class AutoencoderDynamics(nn.Module):
+    def __init__(self, obs_dim, latent_dim):
+        super().__init__()
+        # encoder and decoder
+        self.encoder = nn.Sequential(nn.Linear(obs_dim, 32), nn.ReLU(), nn.Linear(32, latent_dim))
+        self.decoder = nn.Sequential(nn.Linear(latent_dim, 32), nn.ReLU(), nn.Linear(32, obs_dim))
+        # linear transition in latent space
+        self.A = nn.Parameter(torch.eye(latent_dim))
+        self.B = nn.Parameter(torch.zeros(latent_dim, 1))
+
+    def forward(self, obs, action):
+        z = self.encoder(obs)
+        z_next = z @ self.A + action @ self.B.T  # simple linear dynamics
+        obs_pred = self.decoder(z_next)
+        return obs_pred
+
+obs = torch.randn(1, 4)  # toy 4-dimensional observation
+action = torch.tensor([[0.5]])  # continuous action
+model = AutoencoderDynamics(obs_dim=4, latent_dim=2)
+predicted_next_obs = model(obs, action)
+print(predicted_next_obs)
+  </code></pre>
+
+  <h2>17.3 Model‑predictive control (MPC)</h2>
+  <p>
+    Model‑predictive control uses a model to predict future states over a finite horizon, optimises
+    an action sequence with respect to a cost function and executes only the first action before
+    re‑planning.  This receding horizon strategy allows the controller to adapt to disturbances and
+    model inaccuracies.  In reinforcement learning, MPC can be combined with learned dynamics
+    models to produce high‑performance controllers with explicit constraint handling【301278341724487†L70-L100】.
+  </p>
+  <p>
+    In a pricing context, MPC might simulate future demand and revenue over a horizon of several
+    days, choose the price trajectory that maximises expected profit subject to inventory
+    constraints and implement only the first price.  At the next time step the demand forecast is
+    updated and the optimisation is repeated.  This adaptability is particularly valuable when
+    demand models are imperfect or when external factors, such as competitor actions, change
+    rapidly.
+  </p>
+  <p>
+    The code snippet below demonstrates a simple one‑dimensional MPC for a quadratic cost control
+    problem.  The dynamics are assumed to be linear, and the cost penalises deviations from a
+    reference state and large control inputs.  A brute‑force search over possible control
+    sequences is performed for clarity; in practice, convex optimisation or sampling‑based methods
+    scale better to high‑dimensional problems.  The algorithm recedes the horizon at each step and
+    re‑optimises the control sequence【301278341724487†L70-L100】.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+def mpc_controller(x, horizon=3, u_candidates=None):
+    if u_candidates is None:
+        u_candidates = np.linspace(-1, 1, 5)  # discretised control inputs
+    best_cost = float('inf')
+    best_action = 0.0
+    # brute‑force search over control sequences
+    for u_seq in np.array(np.meshgrid(*[u_candidates]*horizon)).T.reshape(-1, horizon):
+        cost = 0.0
+        x_pred = x
+        for u in u_seq:
+            # simple dynamics x_{t+1} = x_t + u
+            x_pred = x_pred + u
+            cost += x_pred**2 + 0.1 * u**2  # quadratic cost
+        if cost < best_cost:
+            best_cost = cost
+            best_action = u_seq[0]
+    return best_action
+
+# Example MPC loop
+x = 0.5
+for _ in range(3):
+    u = mpc_controller(x)
+    x = x + u  # apply control
+    print(f"Action: {u:.2f}, new state: {x:.2f}")
+  </code></pre>
+
+  <h2>17.4 Uncertainty and ensembles</h2>
+  <p>
+    Learned models are approximate and can be misleading if trusted blindly.  To gauge the
+    reliability of predictions one can model uncertainty using ensembles or Bayesian approaches.
+    An ensemble of models is trained on the same data with different initialisations or bootstrap
+    samples; the variance of their predictions provides an estimate of epistemic uncertainty.
+    When planning, one can sample from the ensemble and average the outcomes or use pessimistic
+    estimates to account for uncertainty.  Ensembles have been used successfully in model‑based RL
+    to avoid over‑fitting the model and to guide exploration.
+  </p>
+  <p>
+    For example, in a pricing setting you might train multiple demand models and sample price
+    trajectories under each model.  If some models predict very different outcomes, the agent
+    recognizes that it is uncertain and can collect more data before committing to a specific
+    strategy.  Alternatively, the agent can choose a conservative action that performs reasonably
+    well across all models.  Combining ensembles with Monte Carlo dropout or Gaussian processes
+    provides further avenues for quantifying uncertainty.
+  </p>
+  <p>
+    The following code demonstrates how to aggregate predictions from an ensemble of simple linear
+    models.  Each model predicts the next state given the current state and action.  By computing
+    the mean and standard deviation of the predictions, one obtains an estimate of the expected
+    outcome and its uncertainty.  This information can be incorporated into planning or policy
+    learning to account for model bias.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+class LinearModel:
+    def __init__(self, a, b):
+        self.a = a
+        self.b = b
+    def predict(self, x, u):
+        return self.a * x + self.b * u
+
+# ensemble of linear models with slightly different parameters
+models = [LinearModel(1.0, 0.5), LinearModel(0.9, 0.6), LinearModel(1.1, 0.4)]
+x = 1.0
+u = 0.5
+preds = np.array([m.predict(x, u) for m in models])
+mean_pred = preds.mean()
+std_pred = preds.std()
+print(f"Predictions: {preds}, mean={mean_pred:.2f}, std={std_pred:.2f}")
+  </code></pre>
+
+  <h2>Sources</h2>
+  <p>
+    The model‑based framework distinguishes sample and distribution models and highlights that
+    planning with a learned model can improve sample efficiency【191180862492626†L36-L61】.  Dyna‑Q
+    combines real experience with simulated planning updates to accelerate learning【191180862492626†L64-L88】【191180862492626†L75-L88】.
+    Latent dynamics models such as PlaNet learn compact representations and plan in latent space【876070990366731†L70-L76】.
+    The description of model‑predictive control emphasises receding horizon optimisation and
+    re‑planning【301278341724487†L70-L100】.  These references underpin the techniques presented in this
+    chapter.
+  </p>
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 12 – Deep Q‑Learning</title>
+  <style>
+    body {
+      background-color: #ffffff;
+      font-family: "Georgia", serif;
+      margin: 40px;
+      line-height: 1.6;
+      color: #333333;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 10px;
+      border-left: 4px solid #cccccc;
+      overflow-x: auto;
+    }
+    code {
+      font-family: monospace;
+    }
+    h1, h2, h3 {
+      color: #222222;
+    }
+  </style>
+</head>
+<body>
+  <h1>Chapter 12 – Deep Q‑Learning</h1>
+  <p>
+    Deep Q‑learning extends classical Q‑learning by using a neural network to approximate the optimal
+    action–value function \(Q^*(s,a)\).  In the tabular setting the agent stores one value per
+    state–action pair, but with large or continuous state spaces this becomes impossible.  By
+    leveraging neural networks as universal function approximators, the DQN algorithm can learn a
+    mapping from high‑dimensional inputs to Q‑values and thus enable reinforcement learning on
+    problems such as pricing or decision making where the state is described by continuous features.
+    The following sections introduce the architecture of a DQN, the role of experience replay and
+    target networks, common stability issues and data‑efficiency tricks.
+  </p>
+
+  <h2>12.1 DQN architecture</h2>
+  <p>
+    The goal of Q‑learning is to learn the optimal action–value function \(Q^*(s,a)\) satisfying
+    the Bellman optimality equation \(Q^*(s,a) = \mathbb{E}[r + \gamma \max_{a'} Q^*(s', a') \mid s,a]\).
+    In deep Q‑learning, we approximate \(Q^*(s,a)\) with a neural network parameterized by
+    \(\theta\) and denote it \(Q(s,a; \theta)\).  The PyTorch tutorial emphasises that deep
+    neural networks can serve as universal function approximators, allowing the agent to learn
+    complex value functions from raw observations【922855254126703†L344-L362】.  A simple
+    feed‑forward architecture for tabular problems consists of an input layer for the state
+    representation, one or more hidden layers with non‑linear activations, and an output layer with
+    one unit per action.  The network outputs a vector of Q‑values \((Q(s, a_1), Q(s, a_2), \dots))\)
+    from which the agent selects the action with the highest value.
+  </p>
+  <p>
+    In many decision‑making problems the state may include features such as historical prices,
+    inventory levels or customer demand.  These features are concatenated into a vector and fed into
+    the DQN.  The network learns to predict the cumulative return for each possible pricing action
+    (e.g., different price points).  Because the network is differentiable, gradient descent can be
+    used to minimise the temporal‑difference loss between predicted Q‑values and the target values
+    computed from sampled transitions.  The update equation for the parameters is
+    \(\theta \leftarrow \theta - \alpha \nabla_\theta L(\theta)\) where
+    \(L(\theta) = (y - Q(s,a; \theta))^2\) and \(y = r + \gamma \max_{a'} Q(s', a'; \theta)\).
+  </p>
+  <p>
+    The universality of neural networks means that the same architecture can handle other data
+    modalities, such as time series or images.  When dealing with low‑dimensional pricing features,
+    fully connected layers suffice; for high‑dimensional inputs like images, convolutional networks
+    (CNNs) are often used to extract local structure.  Regardless of the architecture, the key is
+    that the network learns to approximate the Q‑function from data sampled from interaction with
+    the environment.  The next subchapter introduces techniques for improving the stability and
+    efficiency of this approximation.
+  </p>
+  <h3>Python example – simple DQN network</h3>
+  <p>
+    The following code shows how to implement a basic fully connected DQN using PyTorch.  The
+    network takes a state vector as input and outputs Q‑values for each discrete action.  This
+    skeleton can be reused for pricing or inventory problems by modifying the dimensions and
+    environment interaction.
+  </p>
+  <pre><code class="language-python">import torch
+import torch.nn as nn
+
+class DQN(nn.Module):
+    def __init__(self, input_dim: int, hidden_dim: int, n_actions: int):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, n_actions)
+        )
+
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
+        """Compute Q‑values for all actions."""
+        return self.net(state)
+
+# Example usage:
+model = DQN(input_dim=4, hidden_dim=64, n_actions=3)
+state = torch.randn(1, 4)  # mock state with 4 features
+q_values = model(state)
+print("Q-values:", q_values)
+  </code></pre>
+
+  <h2>12.2 Experience replay and target networks</h2>
+  <p>
+    One of the key innovations of DQN is the use of an <em>experience replay</em> buffer.  Instead of
+    updating the network using consecutive transitions, the algorithm stores each transition
+    \((s,a,r,s')\) in a memory and later samples random minibatches during training.  Random
+    sampling breaks the temporal correlations between successive transitions and smooths out the
+    distribution of data; this makes the training process more stable【922855254126703†L299-L303】.
+    When the agent is learning to set prices, for example, the replay memory contains a mix of
+    profitable and unprofitable pricing decisions, allowing the network to learn from diverse
+    experiences.
+  </p>
+  <p>
+    Another critical component is the <em>target network</em>.  In standard Q‑learning the target value
+    depends on the same parameters that we are updating, which can lead to oscillations or
+    divergence.  To address this, DQN maintains a separate copy of the Q‑network, called the
+    target network, whose parameters are held fixed for a number of steps.  The TD target for the
+    current network is computed using the target network: \(y = r + \gamma \max_{a'} Q(s', a';
+    \theta^{-})\).  Periodically, or via a soft update, the weights of the target network
+    \(\theta^{-}\) are updated to match the online network; this technique of fixed Q‑targets
+    stabilises training【78789356868737†L86-L96】【922855254126703†L513-L515】.
+  </p>
+  <p>
+    The following code implements a simple replay memory and training loop with a target network.
+    The pricing environment used here is a toy problem where the agent must choose among several
+    discrete price points to maximise profit.  The replay memory stores transitions, and the
+    <code>train_step</code> function samples a minibatch, computes target Q‑values using the target
+    network, and updates the online network via the mean‑squared error loss.
+  </p>
+  <pre><code class="language-python">import random
+from collections import deque
+
+class ReplayMemory:
+    def __init__(self, capacity: int):
+        self.memory = deque(maxlen=capacity)
+
+    def push(self, transition):
+        self.memory.append(transition)
+
+    def sample(self, batch_size: int):
+        return random.sample(self.memory, batch_size)
+
+    def __len__(self):
+        return len(self.memory)
+
+def train_step(model, target_model, memory, optimizer, batch_size=32, gamma=0.99):
+    if len(memory) < batch_size:
+        return
+    transitions = memory.sample(batch_size)
+    # unpack batch of transitions
+    states, actions, rewards, next_states, dones = zip(*transitions)
+    states = torch.tensor(states, dtype=torch.float32)
+    actions = torch.tensor(actions, dtype=torch.int64).unsqueeze(1)
+    rewards = torch.tensor(rewards, dtype=torch.float32).unsqueeze(1)
+    next_states = torch.tensor(next_states, dtype=torch.float32)
+    dones = torch.tensor(dones, dtype=torch.float32).unsqueeze(1)
+
+    # current Q values
+    q_values = model(states).gather(1, actions)
+    # target Q values using target network
+    with torch.no_grad():
+        next_q_values = target_model(next_states).max(1, keepdim=True)[0]
+        target = rewards + gamma * (1 - dones) * next_q_values
+    loss = nn.functional.mse_loss(q_values, target)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+  </code></pre>
+
+  <h2>12.3 Stability pathologies</h2>
+  <p>
+    Training deep reinforcement learning agents can be notoriously unstable.  Unlike supervised
+    learning, the data distribution shifts as the policy improves, and bootstrapping from
+    self‑generated targets can lead to feedback loops.  In pricing problems this manifests as
+    oscillations between aggressive and conservative price settings when the network overestimates
+    the value of certain actions.  One pathology is <em>overestimation bias</em>, where the
+    \(\max\) operator in the Bellman update tends to select actions with overly optimistic Q‑values.
+    Double Q‑learning, introduced in Chapter 13, addresses this by using a second network to
+    decouple action selection and evaluation【78789356868737†L135-L146】.
+  </p>
+  <p>
+    Another source of instability is correlated updates.  Because successive states are highly
+    correlated, stochastic gradient descent with sequential samples behaves poorly.  Experience
+    replay mitigates this by randomising the training data, but further improvements include
+    using a large buffer, shuffling entire episodes and periodically resetting the environment.  In
+    addition, gradient explosions can occur when Q‑value targets become very large.  Techniques
+    such as gradient clipping, normalising rewards and rescaling the target network updates help
+    stabilise training.  In continuous tasks, normalising state inputs (e.g., scaling price and
+    demand variables) ensures that the network operates within a sensible range.
+  </p>
+  <p>
+    Finally, catastrophic forgetting can occur when the agent stops exploring and fails to revisit
+    rare but valuable states.  Scheduled exploration strategies (e.g., ε‑greedy with decay or
+    parameter noise discussed later) ensure that the agent continues to gather diverse data.  The
+    remainder of this part will introduce more advanced value methods, policy gradient algorithms
+    and actor–critic techniques that further address stability and sample efficiency.
+  </p>
+
+  <h2>12.4 Data‑efficiency tricks</h2>
+  <p>
+    Deep Q‑learning is sample inefficient because each interaction produces a single update and the
+    agent does not leverage the full structure of the problem.  One of the simplest tricks is to
+    use a <em>reward normalisation</em> scheme that rescales rewards to have mean zero and unit
+    variance; this prevents large gradients and improves convergence.  Another trick is to apply
+    <em>state aggregation</em> or <em>feature engineering</em> to compress high‑dimensional inputs into a
+    compact representation, reducing the variance of value estimates.  For pricing problems,
+    transforming raw prices into relative price differences or demand elasticities helps the
+    network learn more quickly.
+  </p>
+  <p>
+    A more sophisticated method is <em>double DQN</em>, which reduces overestimation bias by using
+    separate networks for selecting and evaluating actions【78789356868737†L135-L146】.  In the
+    update target \(y = r + \gamma Q(s', \arg\max_{a'} Q(s', a'; \theta), \theta^{-})\), the online
+    network selects the action while the target network evaluates it.  Dueling DQN, described in
+    Chapter 13, decomposes the Q‑value into a state value and an advantage function【78789356868737†L154-L176】,
+    allowing the agent to learn which states are valuable independent of the specific action.  These
+    enhancements reuse the core DQN machinery but provide significant performance gains.
+  </p>
+  <p>
+    Finally, <em>prioritized experience replay</em> samples transitions with probability proportional to
+    the magnitude of their temporal‑difference error【78789356868737†L238-L307】.  This focuses
+    updates on the most surprising experiences and speeds up learning.  In practice, a stochastic
+    prioritisation scheme is used to avoid overfitting to a few transitions, and importance
+    sampling weights correct for the non‑uniform sampling distribution.  These data‑efficiency
+    tricks complement the core DQN algorithm and pave the way for the advanced methods discussed
+    next.
+  </p>
+
+  <h2>Sources</h2>
+  <p>
+    The content in this chapter is based on publicly available resources.  The PyTorch DQN tutorial
+    explains that neural networks serve as universal function approximators for the action–value
+    function【922855254126703†L344-L362】 and highlights how experience replay stabilises training by
+    decorrelating transitions【922855254126703†L299-L303】.  It also describes the use of a target
+    network for computing targets that are periodically updated【922855254126703†L513-L515】.  A
+    tutorial on improvements to DQN introduces fixed Q‑targets【78789356868737†L86-L96】, double
+    DQN【78789356868737†L135-L146】, dueling networks【78789356868737†L154-L176】, and prioritized
+    experience replay【78789356868737†L238-L307】.  These references provide the theoretical and
+    practical foundations for the deep Q‑learning algorithm.
+  </p>
+</body>
+</html>

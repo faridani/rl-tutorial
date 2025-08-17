@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 15 – Actor–Critic &amp; Trust Regions</title>
+  <style>
+    body { background-color: #ffffff; font-family: "Georgia", serif; margin: 40px; line-height: 1.6; color: #333333; }
+    pre { background: #f4f4f4; padding: 10px; border-left: 4px solid #cccccc; overflow-x: auto; }
+    code { font-family: monospace; }
+    h1, h2, h3 { color: #222222; }
+  </style>
+</head>
+<body>
+  <h1>Chapter 15 – Actor–Critic &amp; Trust Regions</h1>
+  <p>
+    Actor–critic algorithms combine the strengths of value‑based and policy‑based approaches.  The
+    actor represents the policy and is updated via policy gradients, while the critic estimates
+    state values or advantages to reduce variance and guide the actor.  This chapter introduces
+    synchronous (A2C) and asynchronous (A3C) actor–critic methods, explores trust region policy
+    optimisation (TRPO) and its simpler cousin proximal policy optimisation (PPO), and discusses
+    practical considerations such as stability and hyperparameter tuning.
+  </p>
+
+  <h2>15.1 A2C/A3C</h2>
+  <p>
+    Asynchronous Advantage Actor–Critic (A3C) was one of the first algorithms to demonstrate the
+    power of deep RL on a diverse suite of tasks.  A3C runs multiple parallel worker agents in
+    separate environment instances; each worker has its own copy of the actor and critic networks.
+    Workers collect trajectories and update a shared set of global parameters asynchronously【476298955389460†L428-L474】.
+    This parallelism decorrelates experience and leads to more stable training.  In the synchronous
+    variant, Advantage Actor–Critic (A2C), the workers synchronise their updates at regular
+    intervals, which makes the algorithm easier to implement and more efficient on GPUs【476298955389460†L486-L498】.
+  </p>
+  <p>
+    Both A2C and A3C use the advantage function to update the actor.  The critic is trained via
+    a TD loss to predict the state value function \(V^{\pi}(s)\).  The actor is updated using the
+    gradient \(\nabla_\theta J(\theta) \approx \mathbb{E}[\nabla_\theta \log \pi_\theta(a|s)
+    \hat{A}(s,a)]\), where \(\hat{A}\) is an advantage estimate (often GAE).  To stabilise the
+    updates across workers, gradients are usually accumulated over multiple steps before being
+    applied to the shared parameters.  This reduces communication overhead and improves parallel
+    efficiency.
+  </p>
+  <p>
+    The code below sketches an A2C agent for a simple pricing environment.  A value network
+    estimates the state value, and a policy network outputs a softmax distribution over prices.
+    The agent collects trajectories, computes advantages using GAE and then updates both networks
+    synchronously.  Although simplified, this example demonstrates the core actor–critic update.
+  </p>
+  <pre><code class="language-python">import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+class ActorCritic(nn.Module):
+    def __init__(self, state_dim, n_actions, hidden_dim=64):
+        super().__init__()
+        self.actor = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim), nn.ReLU(),
+            nn.Linear(hidden_dim, n_actions), nn.Softmax(dim=-1)
+        )
+        self.critic = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim), nn.ReLU(),
+            nn.Linear(hidden_dim, 1)
+        )
+
+    def forward(self, state):
+        probs = self.actor(state)
+        value = self.critic(state)
+        return probs, value
+
+def a2c_update(model, optimizer, states, actions, returns, advantages):
+    probs, values = model(states)
+    dist = torch.distributions.Categorical(probs)
+    log_probs = dist.log_prob(actions)
+    actor_loss = -(log_probs * advantages.detach()).mean()
+    critic_loss = nn.functional.mse_loss(values.squeeze(), returns)
+    loss = actor_loss + critic_loss
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+# Example training loop omitted for brevity
+  </code></pre>
+
+  <h2>15.2 Trust region policy optimisation (TRPO)</h2>
+  <p>
+    Policy gradient methods can fail if successive policy updates are too large.  When the new
+    policy differs significantly from the old one, the linear approximation used in the gradient
+    derivation breaks down, potentially degrading performance.  Trust Region Policy Optimisation
+    (TRPO) addresses this by constraining each update to lie within a trust region measured by the
+    Kullback–Leibler (KL) divergence between the old and new policies.  The optimisation problem
+    is to maximise the surrogate objective subject to a constraint on the expected KL divergence:
+    \(\max_\theta \mathbb{E}[\frac{\pi_\theta(a|s)}{\pi_{\theta_{\text{old}}}(a|s)} \hat{A}(s,a)]\)
+    such that \(\mathbb{E}[ D_{\mathrm{KL}}(\pi_{\theta_{\text{old}}}(\cdot|s) \| \pi_\theta(\cdot|s)) ] \leq 
+    \delta\).  Solving this constrained optimisation yields a natural gradient update with an
+    adaptive step size【476298955389460†L739-L792】.
+  </p>
+  <p>
+    In practice TRPO uses conjugate gradient to compute an approximate natural gradient direction and
+    a line search to satisfy the KL constraint.  The algorithm performs one large update per batch of
+    trajectories rather than many small updates.  TRPO has been shown to improve performance on
+    continuous control tasks, but its computational cost and complexity make it less widely used in
+    industry.  Nevertheless, understanding TRPO provides insight into how natural gradients and
+    trust regions stabilise policy updates.
+  </p>
+  <p>
+    Due to its complexity, TRPO is rarely implemented from scratch in toy examples.  Instead, we
+    provide pseudocode outlining the core steps: compute advantages and policy gradients; solve a
+    linear system using conjugate gradient to approximate the inverse Fisher vector product; back
+    track along the search direction until the KL constraint is satisfied; then update the policy.
+    The use of a trust region ensures monotonic improvement and helps guard against catastrophic
+    policy collapse【476298955389460†L739-L792】.
+  </p>
+
+  <h2>15.3 Proximal policy optimisation (PPO)</h2>
+  <p>
+    Proximal Policy Optimisation simplifies the trust region concept by clipping the policy
+    update rather than solving a constrained optimisation.  PPO defines the probability ratio
+    \(r(\theta) = \frac{\pi_\theta(a|s)}{\pi_{\theta_{\text{old}}}(a|s)}\) and maximises the
+    clipped surrogate objective:
+    \(L^{\mathrm{CLIP}}(\theta) = \mathbb{E}[\min(r(\theta) \hat{A}, \mathrm{clip}(r(\theta), 1 - 
+    \epsilon, 1 + \epsilon) \hat{A})]\).  This objective prevents \(r(\theta)\) from moving
+    outside the interval \([1 - \epsilon, 1 + \epsilon]\), thereby keeping the new policy close to
+    the old one【476298955389460†L796-L834】.
+  </p>
+  <p>
+    PPO alternates between collecting trajectories with the current policy and performing a few
+    epochs of minibatch stochastic gradient ascent on the clipped objective.  In addition to the
+    policy loss, a value function loss and an entropy bonus are often added.  Because PPO uses
+    simple clipping instead of complex constraints, it is easy to implement, runs efficiently on
+    modern hardware and has become one of the most widely used policy gradient algorithms in
+    practice.
+  </p>
+  <p>
+    The following code sketches a PPO update for a categorical policy.  It computes the ratio
+    between new and old policy probabilities, applies the clipping operation and updates the policy
+    and value networks accordingly.  Although simplified, this illustrates the mechanics of PPO.
+  </p>
+  <pre><code class="language-python">import torch
+
+def ppo_update(policy_net, value_net, optimizer, states, actions, returns, advantages,
+               old_log_probs, clip_epsilon=0.2):
+    # Compute new log probabilities and value estimates
+    new_probs = policy_net(states)
+    dist = torch.distributions.Categorical(new_probs)
+    new_log_probs = dist.log_prob(actions)
+    # Probability ratio
+    ratios = torch.exp(new_log_probs - old_log_probs)
+    # Clipped surrogate loss
+    surrogate1 = ratios * advantages
+    surrogate2 = torch.clamp(ratios, 1 - clip_epsilon, 1 + clip_epsilon) * advantages
+    policy_loss = -torch.min(surrogate1, surrogate2).mean()
+    # Value loss
+    values = value_net(states).squeeze()
+    value_loss = nn.functional.mse_loss(values, returns)
+    # Total loss with entropy bonus
+    entropy = dist.entropy().mean()
+    loss = policy_loss + 0.5 * value_loss - 0.01 * entropy
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+  </code></pre>
+
+  <h2>15.4 Stability and hyperparameters</h2>
+  <p>
+    Actor–critic methods are sensitive to the choice of hyperparameters.  The learning rate
+    determines how quickly the policy and value networks adapt; too high a rate can cause
+    divergence, while too low a rate leads to slow learning.  The discount factor \(\gamma\)
+    controls how much future rewards are valued relative to immediate ones.  In pricing problems
+    where profits accumulate over multiple periods, a high \(\gamma\) (e.g., 0.99) emphasises long‑term
+    strategies.  The GAE parameter \(\lambda\) trades off bias and variance in the advantage
+    estimates, with values around 0.95 often performing well.
+  </p>
+  <p>
+    The clipping parameter \(\epsilon\) in PPO dictates how far the policy is allowed to move in
+    a single update.  A typical choice of \(\epsilon = 0.2\) balances exploration and stability
+    【476298955389460†L796-L834】.  The entropy coefficient encourages exploration; increasing it
+    leads to more stochastic policies but may slow convergence.  The number of epochs and
+    minibatch size also influence performance: more epochs allow greater improvement per batch but
+    risk overfitting to the collected trajectories, while larger minibatches provide more stable
+    gradient estimates.
+  </p>
+  <p>
+    Finally, normalising inputs and advantages can greatly improve stability.  States should be
+    scaled to have zero mean and unit variance, and advantages can be standardised within a batch
+    before computing the loss.  Gradient clipping prevents exploding gradients, and using
+    separate optimisers for actor and critic networks allows fine‑tuning of their learning rates.
+    By carefully tuning these hyperparameters and monitoring training curves, practitioners can
+    achieve robust performance across a wide range of applications.
+  </p>
+
+  <h2>Sources</h2>
+  <p>
+    The description of A3C and A2C comes from the overview of policy gradient methods, which
+    explains how asynchronous workers update shared parameters and how the synchronous variant
+    simplifies implementation【476298955389460†L428-L474】【476298955389460†L486-L498】.  TRPO is
+    characterised by its trust region constraint on the KL divergence and its natural gradient
+    solution【476298955389460†L739-L792】.  PPO introduces a clipped surrogate objective that
+    approximates the trust region without complex constraints【476298955389460†L796-L834】.  These
+    references provide the theoretical underpinnings for the algorithms presented in this chapter.
+  </p>
+</body>
+</html>

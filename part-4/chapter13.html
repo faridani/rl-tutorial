@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 13 – Advanced Value Methods</title>
+  <style>
+    body { background-color: #ffffff; font-family: "Georgia", serif; margin: 40px; line-height: 1.6; color: #333333; }
+    pre { background: #f4f4f4; padding: 10px; border-left: 4px solid #cccccc; overflow-x: auto; }
+    code { font-family: monospace; }
+    h1, h2, h3 { color: #222222; }
+  </style>
+</head>
+<body>
+  <h1>Chapter 13 – Advanced Value Methods</h1>
+  <p>
+    While the basic deep Q‑network provides a powerful way to approximate the optimal action–value
+    function, several enhancements have been developed to reduce bias, improve stability and
+    accelerate learning.  This chapter explores four such improvements: double Q‑learning,
+    dueling networks, prioritized experience replay, distributional reinforcement learning and
+    noisy networks.  Each technique modifies a different aspect of the value estimation process,
+    but they all build on the same foundation of Q‑learning introduced in the previous chapter.
+  </p>
+
+  <h2>13.1 Double and dueling DQN</h2>
+  <p>
+    A weakness of the standard DQN is that it tends to overestimate action values because it uses
+    the same network both to select and to evaluate actions.  Double Q‑learning addresses this
+    overestimation by decoupling the roles of action selection and target evaluation.  The idea is
+    to use the online network to choose the action with the highest estimated Q‑value and then use a
+    separate target network to evaluate that action.  Concretely, the TD target becomes
+    \(y = r + \gamma Q(s', \arg\max_{a'} Q(s',a';\theta), \theta^{-})\).  By splitting these roles the
+    algorithm reduces positive bias, leading to more stable learning【78789356868737†L135-L146】.
+    In pricing domains this reduces the risk of consistently overpricing due to optimistic value
+    estimates.
+  </p>
+  <p>
+    Dueling networks provide another improvement by decomposing the Q‑value function into a state
+    value and an advantage function.  Instead of directly outputting Q‑values, a dueling DQN has
+    two separate streams: one estimates the state value \(V(s)\) and the other estimates the
+    advantage \(A(s,a)\).  The final Q‑value is computed as \(Q(s,a) = V(s) + (A(s,a) - \frac{1}{|A|}
+    \sum_{a'} A(s,a'))\).  This architecture allows the network to learn which states are valuable
+    without having to learn the effect of each action in those states【78789356868737†L154-L176】.
+    In contexts where many actions have similar effects – for example, adjusting prices by a few
+    cents – it helps focus on the overall desirability of the state.
+  </p>
+  <p>
+    The following code defines a dueling DQN using PyTorch.  The state value and advantage are
+    computed by separate linear layers and then combined.  When integrated into the training loop
+    from Chapter 12, this architecture can lead to faster and more stable convergence on
+    high‑dimensional problems.
+  </p>
+  <pre><code class="language-python">import torch
+import torch.nn as nn
+
+class DuelingDQN(nn.Module):
+    def __init__(self, input_dim: int, hidden_dim: int, n_actions: int):
+        super().__init__()
+        self.feature = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+        )
+        # state value stream
+        self.value = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 1)
+        )
+        # advantage stream
+        self.advantage = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, n_actions)
+        )
+
+    def forward(self, x):
+        features = self.feature(x)
+        value = self.value(features)
+        advantage = self.advantage(features)
+        # subtract mean advantage to make advantage unique
+        adv_mean = advantage.mean(dim=1, keepdim=True)
+        q_values = value + (advantage - adv_mean)
+        return q_values
+
+# Example usage
+model = DuelingDQN(input_dim=4, hidden_dim=64, n_actions=3)
+state = torch.randn(1, 4)
+print(model(state))
+  </code></pre>
+
+  <h2>13.2 Prioritized experience replay</h2>
+  <p>
+    In standard experience replay all transitions are sampled uniformly.  However, some experiences
+    are more valuable for learning than others.  Prioritized experience replay assigns a priority
+    to each transition proportional to the magnitude of its temporal‑difference error
+    \(|\delta|\).  Transitions with larger errors are sampled with higher probability, focusing the
+    agent’s updates on experiences where the current Q‑estimate is most wrong.  This idea was
+    introduced as part of a suite of improvements to DQN【78789356868737†L238-L307】.  By directing
+    computational effort toward surprising experiences, prioritized replay improves sample
+    efficiency and speeds up convergence.
+  </p>
+  <p>
+    To implement prioritized replay one maintains a probability distribution over the stored
+    transitions.  Each transition \(i\) is assigned a priority \(p_i\) and is sampled with
+    probability \(P(i) = p_i^\alpha / \sum_j p_j^\alpha\), where \(\alpha \in [0,1]\) controls how
+    strongly prioritisation is applied.  After sampling a minibatch, importance sampling weights
+    \(w_i = (1/N \cdot 1/P(i))^\beta\) are used to correct for the bias introduced by non‑uniform
+    sampling, where \(N\) is the number of transitions and \(\beta\) anneals from 0 to 1 during
+    training【78789356868737†L238-L307】.  These weights are used to scale the loss of each sample
+    before performing gradient descent.
+  </p>
+  <p>
+    The following snippet illustrates a simplified prioritized memory using a list of priorities and
+    Python’s <code>random.choices</code> to sample indices proportionally.  For a production system
+    one would use a more efficient data structure such as a sum‑tree to support logarithmic‑time
+    updates and sampling.
+  </p>
+  <pre><code class="language-python">import numpy as np
+import random
+
+class PrioritizedReplayMemory:
+    def __init__(self, capacity: int, alpha: float=0.6):
+        self.capacity = capacity
+        self.alpha = alpha
+        self.memory = []
+        self.priorities = []
+
+    def push(self, transition, td_error: float):
+        priority = (abs(td_error) + 1e-6) ** self.alpha
+        if len(self.memory) &lt; self.capacity:
+            self.memory.append(transition)
+            self.priorities.append(priority)
+        else:
+            # replace random entry (for simplicity)
+            idx = random.randrange(self.capacity)
+            self.memory[idx] = transition
+            self.priorities[idx] = priority
+
+    def sample(self, batch_size: int, beta: float=0.4):
+        priorities = np.array(self.priorities)
+        probs = priorities / priorities.sum()
+        indices = np.random.choice(len(self.memory), batch_size, p=probs)
+        samples = [self.memory[i] for i in indices]
+        # importance sampling weights
+        weights = (len(self.memory) * probs[indices]) ** (-beta)
+        weights /= weights.max()
+        return samples, weights, indices
+
+    def update_priorities(self, indices, td_errors):
+        for idx, td_error in zip(indices, td_errors):
+            self.priorities[idx] = (abs(td_error) + 1e-6) ** self.alpha
+  </code></pre>
+
+  <h2>13.3 Distributional reinforcement learning</h2>
+  <p>
+    Traditional value‑based methods estimate the expected return for each state–action pair.  In
+    contrast, distributional reinforcement learning models the entire distribution of possible
+    returns.  The categorical DQN (C51) represents the return distribution with a fixed set of
+    discrete atoms \(\{z_i\}\) and learns a probability mass function over these atoms using a
+    softmax output layer【917486596718038†L96-L104】.  The expected value can be recovered by
+    summing the atom values weighted by their probabilities【917486596718038†L118-L133】.  By
+    capturing uncertainty in returns, distributional methods provide better learning signals and
+    often outperform their expected‑value counterparts.
+  </p>
+  <p>
+    The distributional Bellman operator projects the target distribution onto the support of the
+    atoms.  Given a sampled transition, the algorithm shifts and scales the atoms by the reward
+    and discount factor and then distributes probability mass to the nearest target atoms.  While
+    more complex than standard DQN, this approach yields richer estimates of risk and variability.
+    For example, in a pricing problem the agent can learn not only the expected profit but also the
+    spread of outcomes for each price.  The improved signal can lead to more prudent decisions in
+    volatile markets.
+  </p>
+  <p>
+    Below is a simplified implementation of the projection step for a categorical DQN.  The code
+    projects the target distribution onto a fixed support of atoms using vectorised operations.  A
+    full C51 implementation would also include a neural network outputting the logits for each
+    atom and a cross‑entropy loss between the projected and predicted distributions【917486596718038†L135-L149】.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+def project_distribution(next_atoms, next_probabilities, reward, done, gamma, v_min, v_max, n_atoms):
+    """
+    Project the distribution (next_atoms, next_probabilities) onto the support [v_min, v_max].
+    Returns the projected probability mass for each atom.
+    """
+    # Compute the target support
+    delta_z = (v_max - v_min) / (n_atoms - 1)
+    target_atoms = np.linspace(v_min, v_max, n_atoms)
+    # Shift and scale the next_atoms by reward and discount
+    Tz = reward + (1.0 - done) * gamma * next_atoms
+    Tz = np.clip(Tz, v_min, v_max)
+    # Compute the projection of probability mass onto target atoms
+    b = (Tz - v_min) / delta_z
+    l = np.floor(b).astype(int)
+    u = np.ceil(b).astype(int)
+    projected = np.zeros(n_atoms)
+    for i in range(n_atoms):
+        projected[l[i]] += next_probabilities[i] * (u[i] - b[i])
+        projected[u[i]] += next_probabilities[i] * (b[i] - l[i])
+    return projected
+
+next_atoms = np.array([0, 1, 2])
+next_probs = np.array([0.2, 0.5, 0.3])
+proj = project_distribution(next_atoms, next_probs, reward=1, done=False, gamma=0.99,
+                            v_min=0, v_max=2, n_atoms=3)
+print(proj)
+  </code></pre>
+
+  <h2>13.4 Noisy networks and parameter noise</h2>
+  <p>
+    Exploration in value‑based methods is often driven by heuristic schemes such as ε‑greedy.  A
+    more principled approach is to inject noise directly into the network’s parameters.  Noisy
+    networks add Gaussian noise to the weights of certain layers; the noise parameters are learned
+    jointly with the rest of the network so that the agent can adapt its level of exploration
+    during training【972723306068493†L59-L68】.  Unlike ε‑greedy, which forces random actions with
+    uniform probability, noisy networks perturb the action values themselves, encouraging more
+    efficient exploration of high‑value regions.
+  </p>
+  <p>
+    Two variants of NoisyNet were proposed: independent Gaussian noise and factorised noise.  In
+    the independent version each weight has its own noise variable; in the factorised version the
+    noise is decomposed into separate factors for inputs and outputs, reducing the number of noise
+    parameters and improving scalability【972723306068493†L70-L77】.  The noisy layers replace the
+    linear layers in a DQN, and during each forward pass fresh noise is sampled.  As training
+    progresses the network learns how much noise to inject into each parameter: weights with
+    negligible noise converge to deterministic behaviour, whereas weights with significant noise
+    remain stochastic to encourage continued exploration.
+  </p>
+  <p>
+    The code below defines a simple factorised noisy linear layer.  The learnable parameters
+    include the standard weight and bias as well as separate noise coefficients.  During each
+    forward pass the layer samples random vectors for input and output noise and uses their outer
+    product to scale the noise added to the weight matrix.  This layer can replace any linear layer
+    in a DQN to provide parametric exploration.
+  </p>
+  <pre><code class="language-python">import math
+import torch
+import torch.nn as nn
+
+class NoisyLinear(nn.Module):
+    def __init__(self, in_features, out_features, sigma_init=0.5):
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight_mu = nn.Parameter(torch.empty(out_features, in_features))
+        self.weight_sigma = nn.Parameter(torch.empty(out_features, in_features))
+        self.register_buffer('weight_epsilon', torch.zeros(out_features, in_features))
+        self.bias_mu = nn.Parameter(torch.empty(out_features))
+        self.bias_sigma = nn.Parameter(torch.empty(out_features))
+        self.register_buffer('bias_epsilon', torch.zeros(out_features))
+        self.sigma_init = sigma_init
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        mu_range = 1 / math.sqrt(self.in_features)
+        self.weight_mu.data.uniform_(-mu_range, mu_range)
+        self.weight_sigma.data.fill_(self.sigma_init / math.sqrt(self.in_features))
+        self.bias_mu.data.uniform_(-mu_range, mu_range)
+        self.bias_sigma.data.fill_(self.sigma_init / math.sqrt(self.out_features))
+
+    def forward(self, input):
+        # sample factorised noise
+        epsilon_in = torch.randn(self.in_features, device=input.device)
+        epsilon_out = torch.randn(self.out_features, device=input.device)
+        self.weight_epsilon.copy_(torch.ger(epsilon_out, epsilon_in))
+        self.bias_epsilon.copy_(epsilon_out)
+        # compute noisy weights and bias
+        weight = self.weight_mu + self.weight_sigma * self.weight_epsilon
+        bias = self.bias_mu + self.bias_sigma * self.bias_epsilon
+        return torch.nn.functional.linear(input, weight, bias)
+
+# Example usage
+layer = NoisyLinear(4, 3)
+state = torch.randn(1, 4)
+output = layer(state)
+print(output)
+  </code></pre>
+
+  <h2>Sources</h2>
+  <p>
+    This chapter draws on several articles detailing improvements to deep Q‑networks.  The
+    discussion of double DQN and dueling networks is based on the tutorial describing how
+    decoupling action selection and evaluation reduces overestimation bias【78789356868737†L135-L146】 and
+    how splitting the value function into state value and advantage allows the network to learn
+    which states are valuable independently of actions【78789356868737†L154-L176】.  Prioritized
+    experience replay samples transitions with probability proportional to their TD error and uses
+    importance sampling weights to correct the induced bias【78789356868737†L238-L307】.  The
+    distributional RL section summarises the categorical approach where the return distribution is
+    represented with discrete atoms and updated via a distributional Bellman operator【917486596718038†L96-L104】
+    【917486596718038†L118-L133】【917486596718038†L135-L149】.  Finally, the noisy networks
+    section follows the description of parametric noise for exploration【972723306068493†L59-L68】 and
+    its factorised variant【972723306068493†L70-L77】.
+  </p>
+</body>
+</html>
