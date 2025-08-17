@@ -89,37 +89,37 @@ The following two lessons should prepare you for almost all of the math that you
 
 # Part IV — Deep RL
 
-## Chapter 12. Deep Q‑Learning
+## Chapter 12. Deep Q‑Learning [visit lesson](part-4/chapter12.html) 
 * DQN Architecture
 * Experience Replay & Target Networks
 * Stability Pathologies
 * Data‑Efficiency Tricks
 
-## Chapter 13. Advanced Value Methods
+## Chapter 13. Advanced Value Methods  [visit lesson](part-4/chapter13.html) 
 * Double & Dueling DQN
 * Prioritized Replay
 * Distributional RL (C51, QR‑DQN)
 * Noisy Nets & Parameter Noise
 
-## Chapter 14. Policy Gradient Methods
+## Chapter 14. Policy Gradient Methods  [visit lesson](part-4/chapter14.html) 
 * REINFORCE & Baselines
 * Generalized Advantage Estimation (GAE)
 * Natural Gradients
 * Entropy Regularization
 
-## Chapter 15. Actor–Critic & Trust Regions
+## Chapter 15. Actor–Critic & Trust Regions  [visit lesson](part-4/chapter15.html) 
 * A2C/A3C
 * TRPO
 * PPO (Clip & Penalty)
 * Stability & Hyperparameters
 
-## Chapter 16. Maximum Entropy & Continuous Control
+## Chapter 16. Maximum Entropy & Continuous Control  [visit lesson](part-4/chapter16.html) 
 * Soft Actor–Critic (SAC)
 * Twin Delayed DDPG (TD3)
 * Deterministic Policies (DDPG)
 * Action Squashing & Exploration Noise
 
-## Chapter 17. Model‑Based RL
+## Chapter 17. Model‑Based RL  [visit lesson](part-4/chapter17.html) 
 * Dyna‑Style Planning
 * Latent Dynamics Models
 * Model‑Predictive Control (MPC)
