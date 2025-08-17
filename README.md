@@ -57,6 +57,37 @@ The following two lessons should prepare you for almost all of the math that you
 * POMDPs with Recurrent Policies
 * Information Gathering
 
+# Part III — Value Learning & Control
+
+## Chapter 8. Monte Carlo & Temporal‑Difference Learning [visit lesson](part-3/chapter8.html) 
+
+* First‑Visit & Every‑Visit MC
+* TD(0) & n‑Step TD
+* Eligibility Traces & TD(λ)
+* Bias–Variance Tradeoffs
+
+## Chapter 9. Tabular Control Methods [visit lesson](part-3/chapter9.html) 
+
+* SARSA
+* Q‑Learning
+* Expected SARSA
+* Double Learning
+
+## Chapter 10. Exploration in Control [visit lesson](part-3/chapter10.html) 
+
+* Epsilon Schedules & Softmax
+* Count‑Based Exploration
+* Intrinsic Motivation (RND, ICM)
+* Directed Information Gain
+
+## Chapter 11. Function Approximation [visit lesson](part-3/chapter11.html) 
+
+* Linear Approximation
+* Feature Construction
+* Gradient TD Methods
+* Regularization & Stability
+
+
 # Part 4  
 
 * Q-Learning, SARSA, Double Q-Learning Lab [lab and tutorial](q-learning-lab.html)
