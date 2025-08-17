@@ -221,19 +221,19 @@ The following two lessons should prepare you for almost all of the math that you
 
 
 # Part IX — Theory Deep Dives
-## Chapter 32. Convergence & Stability
+## Chapter 32. Convergence & Stability  [visit lesson](part-9/chapter32.html) 
 * Projected Bellman Operator
 * Deadly Triad
 * Divergence Examples
 * Remedies & Constraints
 
-## Chapter 33. Regret, PAC & Sample Complexity
+## Chapter 33. Regret, PAC & Sample Complexity  [visit lesson](part-9/chapter33.html) 
 * Bandit Regret Bounds
 * PAC‑MDP & Optimism
 * Function Approximation Regret
 * Lower Bounds & Minimax
 
-## Chapter 34. Stochastic Approximation & Natural Gradient
+## Chapter 34. Stochastic Approximation & Natural Gradient  [visit lesson](part-9/chapter33.html) 
 * Robbins–Monro
 * Polyak–Ruppert Averaging
 * Fisher Information & Natural Gradient
