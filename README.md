@@ -201,19 +201,19 @@ The following two lessons should prepare you for almost all of the math that you
 
 # Part VIII — Engineering & Production
 
-## Chapter 29. Experimentation & Evaluation
+## Chapter 29. Experimentation & Evaluation [visit lesson](part-8/chapter29.html) 
 * Metrics & Confidence Intervals
 * Ablations & Hyperparameter Tuning
 * Statistical Significance
 * Reproducibility & Seeding
 
-## Chapter 30. Systems, Scaling & Tooling
+## Chapter 30. Systems, Scaling & Tooling  [visit lesson](part-8/chapter30.html) 
 * Vectorized Environments & Parallelism
 * Distributed Training & Rollouts
 * Replay Storage & Checkpointing
 * Monitoring & Dashboards
 
-## Chapter 31. Deployment & Operations
+## Chapter 31. Deployment & Operations [visit lesson](part-8/chapter31.html) 
 * Serving Policies Online
 * Guardrails, Kill‑Switches & Rollbacks
 * Drift Detection & Retraining
