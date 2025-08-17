@@ -1,64 +1,3 @@
-Part IV — Deep RL
-
-12. Deep Q‑Learning
-
-DQN Architecture
-
-Experience Replay & Target Networks
-
-Stability Pathologies
-
-Data‑Efficiency Tricks
-
-13. Advanced Value Methods
-
-Double & Dueling DQN
-
-Prioritized Replay
-
-Distributional RL (C51, QR‑DQN)
-
-Noisy Nets & Parameter Noise
-
-14. Policy Gradient Methods
-
-REINFORCE & Baselines
-
-Generalized Advantage Estimation (GAE)
-
-Natural Gradients
-
-Entropy Regularization
-
-15. Actor–Critic & Trust Regions
-
-A2C/A3C
-
-TRPO
-
-PPO (Clip & Penalty)
-
-Stability & Hyperparameters
-
-16. Maximum Entropy & Continuous Control
-
-Soft Actor–Critic (SAC)
-
-Twin Delayed DDPG (TD3)
-
-Deterministic Policies (DDPG)
-
-Action Squashing & Exploration Noise
-
-17. Model‑Based RL
-
-Dyna‑Style Planning
-
-Latent Dynamics Models
-
-Model‑Predictive Control (MPC)
-
-Uncertainty & Ensembles
 
 Part V — Structure & Constraints
 
@@ -262,3 +201,4 @@ Open Problems & Trends
 
 
 Community & Conferences
+
