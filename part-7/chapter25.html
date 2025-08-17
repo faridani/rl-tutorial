@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 25 – Operations &amp; Supply Chain</title>
+  <style>
+    body { background-color: #ffffff; font-family: "Georgia", serif; margin: 40px; line-height: 1.6; color: #333333; }
+    pre { background: #f4f4f4; padding: 10px; border-left: 4px solid #cccccc; overflow-x: auto; }
+    code { font-family: monospace; }
+    h1, h2, h3 { color: #222222; }
+  </style>
+</head>
+<body>
+  <h1>Chapter 25 – Operations &amp; Supply Chain</h1>
+  <p>
+    Reinforcement learning offers powerful tools for optimising operational
+    decisions in production, logistics and supply chains.  Problems such as
+    inventory control, vehicle routing, queue management and energy
+    scheduling are sequential and stochastic.  Traditional heuristics and
+    linear models often struggle with the complexity and uncertainty
+    involved.  By learning policies from interaction with simulated or
+    real environments, RL can adapt to changing demand patterns and
+    constraints.  In this chapter we discuss how RL models inventory
+    control, routing and dispatch, queueing systems and energy demand
+    management.
+  </p>
+
+  <h2>25.1 Inventory control</h2>
+  <p>
+    Inventory management is fundamental to supply chains.  A retailer or
+    manufacturer must decide when and how much to reorder in order to
+    balance holding costs against stockouts.  The NEASQC use‑case on
+    reinforcement learning for inventory management describes inventory
+    control as a sequential decision problem: the learning agent observes
+    stochastic demand and local inventory information and decides on the
+    next ordering quantity【28123364841764†L61-L66】.  The objective is to
+    minimise cumulative cost, which includes holding costs, penalties for
+    unmet demand and ordering costs.  Traditional policies like order‑up‑
+    to or (s,S) rules are hard‑coded and may not account for complex
+    dynamics.  RL models this as an MDP and learns ordering policies from
+    data【28123364841764†L80-L88】.
+  </p>
+  <p>
+    In an RL formulation, the state includes current inventory level,
+    backorders and possibly lead times.  The action is the order quantity.
+    The reward is negative cost, reflecting holding and shortage costs.  A
+    Q‑learning or actor–critic algorithm can be applied to learn a policy
+    mapping states to order decisions.  Deep RL, such as DQN, is
+    particularly effective when the state space is large or continuous,
+    and transfer learning can adapt policies to new products or locations
+   【28123364841764†L80-L88】.
+  </p>
+  <p>
+    The following example illustrates a simple inventory control problem.
+    Demand is stochastic, and ordering incurs fixed and variable costs.
+    The RL agent learns an ordering policy using SARSA.  While simplistic,
+    the example demonstrates how RL can automate inventory decisions.
+  </p>
+  <pre><code># Inventory control via SARSA
+import numpy as np
+
+max_inventory = 20
+max_order = 10
+holding_cost = 1.0
+stockout_cost = 5.0
+order_cost = 2.0
+
+rng = np.random.default_rng(0)
+
+# state: current inventory level (0..max_inventory)
+Q = np.zeros((max_inventory+1, max_order+1))
+
+def demand():
+    # Poisson demand
+    return rng.poisson(3)
+
+alpha = 0.1
+gamma = 0.9
+epsilon = 0.1
+
+for episode in range(500):
+    inventory = rng.integers(0, max_inventory+1)
+    action = rng.integers(0, max_order+1)
+    for t in range(50):
+        # take action (order)
+        order_qty = action
+        inventory = min(max_inventory, inventory + order_qty)
+        # observe demand
+        d = demand()
+        sold = min(inventory, d)
+        inventory -= sold
+        # compute cost
+        cost = holding_cost * inventory + stockout_cost * max(0, d - sold)
+        if order_qty > 0:
+            cost += order_cost
+        reward = -cost
+        # choose next action epsilon-greedily
+        if rng.uniform() < epsilon:
+            next_action = rng.integers(0, max_order+1)
+        else:
+            next_action = np.argmax(Q[inventory])
+        # SARSA update
+        Q[inventory, action] += alpha * (reward + gamma * Q[inventory, next_action] - Q[inventory, action])
+        action = next_action
+</code></pre>
+  <p>
+    After training, the Q‑table encodes a policy suggesting how much to
+    order at each inventory level.  Extensions include multi‑echelon
+    inventories, perishability and lead times, where deep RL and policy
+    gradient methods become more appropriate.
+  </p>
+
+  <h2>25.2 Routing &amp; dispatch</h2>
+  <p>
+    Vehicle routing and dispatch problems involve assigning vehicles (e.g.,
+    delivery trucks or ride‑sharing cars) to requests.  The state
+    includes vehicle locations and outstanding requests, while actions
+    specify which vehicle to assign.  The objective is to minimise
+    metrics such as travel distance, waiting time and fleet idle time.
+    RL algorithms have been used to learn dispatching policies that adapt
+    to real‑time demand.  For example, in ride‑hailing systems, RL agents
+    can decide whether to accept or reject ride requests and how to
+    reposition vehicles to anticipate future demand.
+  </p>
+  <p>
+    A simple dispatch environment can be simulated on a grid: vehicles
+    move between locations, requests arrive randomly, and the agent must
+    assign vehicles to requests.  A Deep Q‑Network can estimate the value
+    of dispatch actions given the current state.  Policy gradient methods
+    can directly parameterise the dispatch policy.  Multi‑agent RL is
+    often required when each vehicle acts independently; decentralised
+    training with a shared critic is a common approach.
+  </p>
+  <p>
+    Below is an outline of a dispatch simulation.  Vehicles are
+    represented by positions; requests have origins and destinations; the
+    agent selects assignments to maximise total served demand while
+    penalising idle time.
+  </p>
+  <pre><code># Simplified vehicle dispatch simulation (outline)
+# State: positions of vehicles and pending requests
+# Action: assignment of vehicles to requests
+# Reward: number of requests served minus travel cost
+# Use DQN or policy gradient to learn dispatch policy
+</code></pre>
+  <p>
+    Although dispatch problems are complex, RL approaches have shown
+    promising results in ride‑hailing and logistics, improving service
+    quality and efficiency.
+  </p>
+
+  <h2>25.3 Queueing &amp; service control</h2>
+  <p>
+    Many operations involve managing queues, such as call centres,
+    customer support or manufacturing lines.  The decision maker can
+    allocate servers, schedule jobs or prioritise tasks.  RL methods can
+    learn policies that minimise waiting times and service costs.  The
+    state captures the queue lengths and other context; the action
+    determines service allocation.  Rewards reflect throughput and
+    waiting time.  Value iteration or policy gradient methods can find
+    optimal policies in small systems, while deep RL scales to high
+    dimensions.
+  </p>
+  <p>
+    For instance, in a call centre with multiple customer types, the
+    agent must decide which call to serve next.  By modeling this as an
+    MDP, RL can learn scheduling policies that reduce average waiting
+    times and abandoned calls.  Simulation environments can generate
+    realistic arrival and service processes for training.
+  </p>
+  <p>
+    The pseudo‑code below sketches a queueing control loop.  The agent
+    observes queue lengths, selects a service action, and updates its
+    policy based on the observed waiting time reduction.
+  </p>
+  <pre><code># Queueing control with reinforcement learning
+initialize policy parameters
+for each episode:
+    reset queues
+    for each step:
+        observe state (queue lengths)
+        choose action according to policy (e.g., which queue to serve)
+        simulate service, observe reward (negative waiting time)
+        update policy parameters via policy gradient or Q-learning
+</code></pre>
+  <p>
+    RL approaches can outperform rule‑based scheduling, particularly when
+    service demand patterns are complex or variable.
+  </p>
+
+  <h2>25.4 Energy &amp; demand response</h2>
+  <p>
+    Energy systems face the challenge of balancing supply and demand
+    through time.  Utilities and building managers must decide when to
+    turn on or off equipment, charge or discharge batteries, and adjust
+    demand response programmes.  RL can learn control policies that
+    minimise energy costs while satisfying constraints.  States include
+    current energy consumption, battery levels and forecasts; actions
+    determine control signals; rewards reflect cost savings.  Model‑based
+    RL can leverage physical models of energy systems, while model‑free
+    approaches learn directly from data.
+  </p>
+  <p>
+    Demand response programmes ask consumers to reduce or shift usage
+    during peak periods.  An RL agent can recommend actions (e.g.,
+    thermostat adjustments) to participants based on personal comfort
+    preferences and incentives.  To respect user preferences, reward
+    functions incorporate discomfort penalties.  Multi‑agent RL may be
+    used when coordinating many households or devices.
+  </p>
+  <p>
+    The following example illustrates a simple RL controller for a
+    battery storage system.  The agent decides whether to charge or
+    discharge a battery to minimise electricity cost given a time‑of‑use
+    price schedule.
+  </p>
+  <pre><code># Battery control via Q-learning
+import numpy as np
+
+price = [0.2, 0.2, 0.2, 0.3, 0.3, 0.3, 0.5, 0.5, 0.3, 0.3, 0.2, 0.2]  # hourly prices
+n_hours = len(price)
+max_charge = 5
+capacity = 10
+
+Q = np.zeros((capacity+1, 3))  # states: charge level; actions: charge, idle, discharge
+alpha, gamma = 0.1, 0.9
+
+rng = np.random.default_rng(0)
+for episode in range(500):
+    charge = rng.integers(0, capacity+1)
+    for t in range(n_hours):
+        # choose action epsilon-greedily
+        if rng.uniform() < 0.1:
+            action = rng.integers(0, 3)
+        else:
+            action = np.argmax(Q[charge])
+        next_charge = charge
+        reward = 0.0
+        if action == 0 and charge < capacity:  # charge
+            next_charge += 1
+            reward -= price[t]
+        elif action == 2 and charge > 0:  # discharge
+            next_charge -= 1
+            reward += price[t]
+        # update Q
+        Q[charge, action] += alpha * (reward + gamma * np.max(Q[next_charge]) - Q[charge, action])
+        charge = next_charge
+</code></pre>
+  <p>
+    After training, the Q‑table encodes a policy for charging or
+    discharging the battery depending on the price and current charge
+    level.  More sophisticated models incorporate degradation costs,
+    forecast uncertainties and multiple energy assets.
+  </p>
+
+  <h2>Summary</h2>
+  <p>
+    RL provides a flexible framework for operational decision‑making in
+    supply chains.  Inventory control can be modelled as an MDP where
+    ordering actions minimise costs given stochastic demand【28123364841764†L61-L66】.  RL
+    approaches generalise to routing, dispatch, queueing, and energy
+    management, learning from data and adapting to uncertainty.  When
+    combined with simulation and domain expertise, RL techniques hold
+    promise for automating and optimising complex supply chain processes.
+  </p>
+
+  <h2>Sources</h2>
+  <p>
+    The description of inventory control and RL’s role in minimising
+    cumulative costs is based on the NEASQC article on reinforcement
+    learning for inventory management【28123364841764†L61-L66】【28123364841764†L80-L88】.  
+  </p>
+</body>
+</html>

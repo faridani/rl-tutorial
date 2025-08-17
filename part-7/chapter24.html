@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 24 – Revenue &amp; Pricing</title>
+  <style>
+    body { background-color: #ffffff; font-family: "Georgia", serif; margin: 40px; line-height: 1.6; color: #333333; }
+    pre { background: #f4f4f4; padding: 10px; border-left: 4px solid #cccccc; overflow-x: auto; }
+    code { font-family: monospace; }
+    h1, h2, h3 { color: #222222; }
+  </style>
+</head>
+<body>
+  <h1>Chapter 24 – Revenue &amp; Pricing</h1>
+  <p>
+    Dynamic pricing is a natural playground for reinforcement learning.  Firms
+    must set prices for products or services without complete knowledge of
+    customer demand.  At each time step, a retailer chooses a price and
+    observes the resulting sales, then updates its pricing strategy.  The
+    problem is inherently sequential and uncertain: raising prices may
+    increase revenue per sale but reduce volume, while lowering prices may
+    boost volume but cut margins.  Reinforcement learning (RL) and
+    multi‑armed bandit algorithms help balance these trade‑offs.  In this
+    chapter we explore how RL models dynamic pricing as a bandit or MDP,
+    incorporate context and elasticity, handle auctions and ad bidding, and
+    manage budget pacing.
+  </p>
+
+  <h2>24.1 Dynamic pricing as a bandit/MDP</h2>
+  <p>
+    The dynamic pricing problem can be viewed as a multi‑armed bandit (MAB)
+    in which each price point corresponds to an arm.  The reward of an arm
+    is the revenue achieved when that price is offered.  The goal is to
+    select prices over time to maximise cumulative revenue while learning
+    the demand curve.  A Medium article on dynamic pricing explains that
+    this problem mirrors the casino bandit analogy: exploration involves
+    trying different price points to gauge demand, while exploitation
+    focuses on the price that currently yields the best revenue【890864616009742†L74-L83】.
+    Each pricing attempt reveals the probability of a sale at that price
+    and thus contributes to estimating the expected revenue curve【890864616009742†L83-L116】.
+    RL algorithms such as ε‑greedy, UCB and Thompson sampling can be
+    adapted to select prices based on observed rewards and uncertainty.
+  </p>
+  <p>
+    When the price influences the state of the system (e.g., inventory
+    levels or customer fatigue), dynamic pricing becomes an MDP.  The agent
+    observes the current state and chooses a price; the environment
+    responds with sales and a new state.  The objective is to maximise the
+    discounted sum of future profits.  Model‑free RL methods like Q‑learning
+    and policy gradient can learn pricing policies without an explicit
+    model of demand.  Model‑based RL methods build demand models and plan
+    prices accordingly.
+  </p>
+  <p>
+    The code below demonstrates a simple bandit‑based dynamic pricing
+    simulation using ε‑greedy exploration.  We assume the purchase
+    probability for each price follows a logistic function of price and
+    compute revenue as price times purchase probability.  The algorithm
+    iteratively selects prices, observes Bernoulli sales, updates
+    estimated rewards and chooses the next price accordingly.
+  </p>
+  <pre><code># Toy dynamic pricing with epsilon-greedy
+import numpy as np
+
+prices = np.linspace(0.5, 3.0, 10)  # candidate price points
+true_a, true_b = 0.9, 5.0  # parameters of logistic demand curve
+
+# true purchase probability p(p) = a / (1 + exp(b*(p - 1)))
+def purchase_prob(p):
+    return true_a / (1.0 + np.exp(true_b * (p - 1)))
+
+# simulate environment: return revenue from one price
+rng = np.random.default_rng(1)
+def pull_arm(i):
+    p = prices[i]
+    sale = rng.uniform() < purchase_prob(p)
+    return p * sale
+
+n_arms = len(prices)
+estimated_rewards = np.zeros(n_arms)
+counts = np.zeros(n_arms)
+
+epsilon = 0.1
+n_steps = 1000
+for t in range(n_steps):
+    if rng.uniform() < epsilon:
+        arm = rng.integers(n_arms)
+    else:
+        arm = np.argmax(estimated_rewards)
+    reward = pull_arm(arm)
+    counts[arm] += 1
+    estimated_rewards[arm] += (reward - estimated_rewards[arm]) / counts[arm]
+
+best_price = prices[np.argmax(estimated_rewards)]
+print("Estimated optimal price:", best_price)
+</code></pre>
+  <p>
+    This simulation illustrates the exploration–exploitation dilemma in
+    pricing.  The agent occasionally explores random price points but
+    gradually concentrates on the price that maximises estimated revenue.
+    In practice, more sophisticated methods such as Thompson sampling or
+    contextual bandits can achieve faster convergence and adapt to time‑
+    varying demand.
+  </p>
+
+  <h2>24.2 Contextual pricing &amp; elasticity</h2>
+  <p>
+    Real‑world pricing decisions depend on context such as customer
+    demographics, marketing campaigns, inventory levels and seasonality.  A
+    contextual bandit model can incorporate these features, learning a
+    mapping from context to price.  Instead of a single multi‑armed
+    bandit, we learn a parameterised model that predicts expected
+    revenue or purchase probability conditioned on the context.  In the
+    dynamic pricing article, this is equivalent to modelling the demand
+    curve using logistic functions and adjusting price accordingly【890864616009742†L117-L129】.
+    Linear and nonlinear function approximations can map context to an
+    expected reward for each price.  When the number of arms is large or
+    continuous, policy gradient methods become attractive.
+  </p>
+  <p>
+    Elasticity measures how sensitive demand is to price changes.  If
+    demand is highly elastic, small price increases reduce sales
+    substantially; if demand is inelastic, revenue may increase by raising
+    prices.  Estimating elasticity from data is crucial for dynamic
+    pricing.  In a contextual bandit or RL framework, the agent can learn
+    elasticity by exploring prices across different contexts.  One can
+    estimate the derivative of expected revenue with respect to price and
+    update pricing rules accordingly.  Careful regularisation is needed to
+    avoid overfitting to noise.
+  </p>
+  <p>
+    The example below demonstrates a linear contextual bandit for pricing.
+    Each context vector represents features such as season and inventory
+    level.  The agent learns linear coefficients for each price to
+    predict expected revenue and selects the price with the highest
+    predicted revenue with an exploration bonus.
+  </p>
+  <pre><code># Linear contextual bandit for dynamic pricing
+import numpy as np
+from numpy.linalg import inv
+
+# Generate synthetic contexts and rewards
+n_prices = 5
+n_features = 3
+prices = np.linspace(0.5, 2.5, n_prices)
+
+# true linear coefficients for purchase probability per price
+true_theta = np.array([
+    [1.5, -0.3, 0.1],
+    [1.0,  0.2, 0.0],
+    [0.5,  0.5, -0.1],
+    [0.0,  0.7, 0.3],
+    [-0.5, 1.0, 0.5]
+])
+
+rng = np.random.default_rng(0)
+
+# Thompson sampling with linear regression prior
+A = [np.eye(n_features) for _ in range(n_prices)]
+b = [np.zeros(n_features) for _ in range(n_prices)]
+
+n_steps = 200
+total_reward = 0
+for t in range(n_steps):
+    context = rng.normal(size=n_features)
+    # sample parameters for each price from posterior
+    thetas = []
+    for i in range(n_prices):
+        cov = inv(A[i])
+        mean = cov @ b[i]
+        sample_theta = rng.multivariate_normal(mean, cov)
+        thetas.append(sample_theta)
+    # compute predicted revenue: price * sigmoid(context dot theta)
+    pred_revenues = [prices[i] * (1/(1+np.exp(-context.dot(thetas[i])))) for i in range(n_prices)]
+    arm = int(np.argmax(pred_revenues))
+    # simulate reward using true coefficients
+    prob = 1/(1+np.exp(-context.dot(true_theta[arm])))
+    sale = rng.uniform() < prob
+    reward = prices[arm] * sale
+    total_reward += reward
+    # update posterior
+    A[arm] += np.outer(context, context)
+    b[arm] += reward * context
+
+print("Average revenue:", total_reward / n_steps)
+</code></pre>
+  <p>
+    This algorithm uses Thompson sampling to draw a parameter vector for
+    each price from its posterior, predicts revenue for each price given
+    the context, and chooses the price with the highest prediction.  The
+    posterior is updated after observing the reward.  This approach
+    adapts prices to context and gradually learns the relationship between
+    context features and demand.
+  </p>
+
+  <h2>24.3 Auction &amp; ad bidding</h2>
+  <p>
+    Dynamic pricing principles extend to auctions and online advertising,
+    where the agent must bid for ad impressions or auction items.  In a
+    second‑price auction, the winner pays the second highest bid; the
+    optimal bid is related to the agent’s private value.  RL can learn
+    bidding strategies that maximise expected revenue or clicks under
+    budget constraints.  For example, multi‑agent bandit models can
+    represent competing bidders, and RL agents can learn to bid
+    strategically without explicit market models.  In display advertising,
+    contextual bandits allocate impressions across creatives based on
+    click‑through rates, balancing exploration of new ads with exploitation
+    of known high‑performers.
+  </p>
+  <p>
+    A simple bidding example considers an advertiser that bids on search
+    keywords.  The agent receives a reward equal to the revenue from a
+    click minus the cost of the bid.  The state includes remaining budget
+    and time steps.  A Q‑learning algorithm can learn a policy mapping
+    states to bids that maximises expected profit.  The update rule
+    compares the Q‑value of the current state–action pair with the
+    observed reward plus discounted value of the next state.
+  </p>
+  <p>
+    The following pseudocode outlines Q‑learning for an auction bidding
+    problem:
+  </p>
+  <pre><code># Q-learning for auction bidding
+initialize Q(s, a) arbitrarily
+for each episode:
+    state = (budget, time)
+    for each step:
+        with probability ε select random bid else select bid = argmax_a Q(state,a)
+        observe reward r (revenue - cost) and next_state
+        update Q(state, bid) ← Q(state, bid) + α [r + γ * max_{a'} Q(next_state, a') - Q(state, bid)]
+        state = next_state
+</code></pre>
+  <p>
+    This algorithm learns a value function over state–action pairs and uses
+    it to choose bids.  Extensions include continuous actions via
+    actor–critic methods and modelling competitors’ behaviour explicitly.
+  </p>
+
+  <h2>24.4 Budget pacing &amp; constraints</h2>
+  <p>
+    Advertisers often have finite budgets that must be spent over a
+    campaign horizon.  Budget pacing aims to allocate spending across
+    opportunities to maximise total reward while staying within budget.
+    The state comprises remaining budget and remaining time; the action is
+    the bid or price.  Constrained RL algorithms, such as those using
+    Lagrange multipliers, can optimise reward subject to a budget
+    constraint.  Alternatively, one can transform the problem into an
+    unconstrained one by incorporating the budget into the reward function
+    with a penalty for overspending.
+  </p>
+  <p>
+    As an example, consider a discount factor λ that controls the pacing.
+    If the budget is overspent early, future rewards are penalised.  The
+    RL agent learns to spread spending by balancing immediate revenue with
+    long‑term opportunities.  Off‑policy evaluation techniques can
+    estimate the performance of a budget policy before deployment, using
+    logged data from previous campaigns.
+  </p>
+  <p>
+    Below is a toy example of budget pacing using a simple RL loop.  The
+    agent has a fixed budget and interacts with an environment that
+    presents price opportunities with stochastic returns.  The agent
+    chooses to buy or skip depending on the remaining budget and number of
+    remaining opportunities.
+  </p>
+  <pre><code># Simple budget pacing simulation
+import numpy as np
+rng = np.random.default_rng(42)
+
+budget = 10.0
+n_opportunities = 20
+discount = 0.99
+
+# value function table: remaining budget × remaining opportunities
+V = np.zeros((11, n_opportunities+1))
+
+# iterate backwards to compute optimal value
+for t in range(n_opportunities-1, -1, -1):
+    for b in range(11):
+        # two actions: buy (spend 1 unit) or skip
+        buy_reward = 0
+        if b > 0:
+            buy_reward = rng.uniform(0.0, 2.0) + discount * V[b-1, t+1]
+        skip_reward = discount * V[b, t+1]
+        V[b, t] = max(buy_reward, skip_reward)
+
+print("Estimated value with full budget:", V[int(budget), 0])
+</code></pre>
+  <p>
+    This dynamic programming example approximates the optimal policy for
+    spending a fixed budget across random opportunities.  In more
+    realistic scenarios, one would use RL algorithms to handle
+    high‑dimensional state spaces and uncertainty about returns.
+  </p>
+
+  <h2>Summary</h2>
+  <p>
+    Dynamic pricing and revenue management illustrate how reinforcement
+    learning can handle sequential decision‑making under uncertainty.  By
+    framing prices as arms in a bandit or actions in an MDP, the agent
+    learns to maximise revenue through exploration and exploitation.
+    Contextual bandits incorporate features such as seasonality and
+    inventory to adapt pricing to context.  Auctions and ad bidding are
+    extensions of pricing where the action is a bid rather than a posted
+    price, and RL algorithms can learn bidding strategies under budget
+    constraints.  Budget pacing ensures that limited resources are
+    allocated efficiently across time.  These techniques form the basis
+    for applying RL to real‑world revenue management problems.
+  </p>
+
+  <h2>Sources</h2>
+  <p>
+    The dynamic pricing framework draws on the article describing the
+    multi‑armed bandit formulation of pricing, highlighting exploration and
+    exploitation trade‑offs and the connection between price and purchase
+    probability【890864616009742†L74-L83】【890864616009742†L83-L116】.  
+  </p>
+</body>
+</html>

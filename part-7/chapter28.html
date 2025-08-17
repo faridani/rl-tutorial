@@ -1,0 +1,272 @@
+<!--
+  Chapter 28: Robotics & Control (Focused Overview)
+
+  This chapter concludes Part VII by discussing reinforcement learning in
+  robotics and continuous control.  It highlights benchmark tasks,
+  sim‑to‑real transfer techniques such as domain randomisation, learning from
+  demonstrations and safety considerations.  Each section contains
+  descriptive text and simple Python code to illustrate core concepts.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 28 – Robotics &amp; Control</title>
+  <style>
+    body {
+      background: #ffffff;
+      color: #222;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      margin: 40px;
+      line-height: 1.6;
+    }
+    h1, h2 {
+      color: #2c3e50;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-family: "Courier New", monospace;
+    }
+    footer {
+      margin-top: 40px;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <h1>28 Robotics &amp; Control (Focused Overview)</h1>
+  <p>
+    Reinforcement learning has become a powerful tool for controlling
+    high‑dimensional robots, from manipulators to quadrupeds.  Unlike
+    episodic games or bandit problems, robotic systems present continuous
+    state and action spaces, complex dynamics and safety constraints.  This
+    chapter provides a concise overview of RL for robotics, emphasising
+    continuous control benchmarks, sim‑to‑real transfer, learning from
+    demonstrations and safety‑critical considerations.  Although full
+    robotics pipelines are beyond the scope of this book, the principles
+    described here form a foundation for further study.
+  </p>
+
+  <h2>28.1 Continuous Control Benchmarks</h2>
+  <p>
+    Many RL algorithms are first tested on physics simulators such as MuJoCo,
+    Bullet or Robosuite.  Benchmarks like HalfCheetah, Walker2D, Hopper and
+    Humanoid present tasks where agents must learn to balance, run or hop by
+    continuously actuating joints.  The state is a vector of joint positions
+    and velocities; actions are continuous torques; and the reward encourages
+    forward velocity while penalising energy expenditure.  Algorithms such as
+    Deep Deterministic Policy Gradient (DDPG), Twin Delayed DDPG (TD3) and
+    Soft Actor–Critic (SAC) have achieved state‑of‑the‑art performance on
+    these tasks, demonstrating the ability of policy gradient and actor–critic
+    methods to handle high‑dimensional continuous control.
+  </p>
+  <p>
+    While the tasks themselves are simulated, they provide a valuable
+    playground for developing robust RL algorithms.  The underlying
+    environments expose challenges such as exploration in large action
+    spaces, stable value function estimation and efficient sample reuse.
+    Continuous action policies are typically represented by Gaussian or Beta
+    distributions, and entropy regularisation encourages exploration.  The
+    lessons learned from these benchmarks often transfer to real robots with
+    some adjustments, although physical systems introduce additional
+    complexities like sensor noise and hardware delays.
+  </p>
+  <p>
+    The following pseudo‑code outlines a simplified actor–critic loop for a
+    continuous control task.  We maintain a policy network that outputs a
+    mean action and a critic network that predicts the state value.  At each
+    step, we sample an action, observe the reward and next state, compute the
+    advantage and update both networks using gradient ascent/descent.  In
+    practice, one would use replay buffers and target networks for stability.
+  </p>
+  <pre><code class="language-python"># pseudo-code for a simple actor–critic loop on a continuous control task
+for episode in range(num_episodes):
+    state = env.reset()
+    done = False
+    while not done:
+        mu, sigma = policy(state)        # policy outputs mean and std dev
+        action = mu + sigma * np.random.randn()  # sample continuous action
+        next_state, reward, done = env.step(action)
+        value = critic(state)
+        next_value = critic(next_state)
+        advantage = reward + gamma * next_value - value
+        # update critic to minimise squared TD error
+        critic_params = critic_params - alpha_c * \n            grad((value - (reward + gamma * next_value))**2)
+        # update policy to maximise expected return
+        policy_params = policy_params + alpha_p * \n            grad(log_prob(action | state) * advantage)
+        state = next_state
+  </code></pre>
+
+  <h2>28.2 Sim‑to‑Real Transfer &amp; Domain Randomisation</h2>
+  <p>
+    Training robots exclusively in the real world is often impractical due to
+    cost, time and safety.  Simulation environments allow rapid iteration,
+    but policies trained in simulation may fail on the physical system due to
+    the &ldquo;reality gap,&rdquo; where differences in dynamics, sensor noise and
+    lighting degrade performance.  Domain randomisation is a technique that
+    narrows this gap by deliberately varying parameters in the simulator
+    (e.g., masses, friction, textures, lighting) across training episodes
+    so the agent experiences a wide range of conditions.  Exposure to this
+    variability encourages the policy to generalise beyond the exact simulator
+    and perform well on the real robot.  A robotics blog notes that changing
+    simulator parameters such as sky colour, lane markings and lighting
+    between episodes forces the agent to handle diverse environments and
+    improves robustness【537490670580488†L94-L120】.
+  </p>
+  <p>
+    Beyond domain randomisation, techniques like system identification
+    refine simulated models by fitting them to data collected from the real
+    robot.  Residual physics approaches learn a neural network to correct
+    model inaccuracies.  When combined with offline RL algorithms, these
+    methods yield controllers that transfer smoothly to the hardware.  Safety
+    during deployment is paramount: one common approach is to deploy
+    increasingly complex policies through a &ldquo;sim‑to‑lab‑to‑real&rdquo; pipeline,
+    where the policy first runs on safer testbeds before moving onto the
+    robot.  Additionally, one can incorporate conservative action filters or
+    safety shields to prevent unsafe actions when the learned policy is
+    uncertain.
+  </p>
+  <p>
+    The code snippet below illustrates domain randomisation for a simple
+    pendulum control task.  Each episode samples a random mass and friction
+    coefficient.  The agent learns to swing up the pendulum under varying
+    dynamics, which improves robustness when the dynamics change at test time.
+    This pattern applies to more complex robots where masses, inertias and
+    visual textures are randomised during training.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+class RandomisedPendulum:
+    def __init__(self):
+        self.g = 9.81
+    def reset(self):
+        # sample random mass and friction for each episode
+        self.mass = np.random.uniform(0.8, 1.2)
+        self.friction = np.random.uniform(0.0, 0.05)
+        self.theta = np.random.uniform(-np.pi, np.pi)
+        self.omega = 0.0
+        return np.array([self.theta, self.omega])
+    def step(self, torque):
+        dt = 0.05
+        # dynamics with randomised mass and friction
+        torque = np.clip(torque, -2.0, 2.0)
+        self.omega += dt * (torque - self.mass * self.g * np.sin(self.theta) - self.friction * self.omega) / self.mass
+        self.theta += dt * self.omega
+        # reward encourages upright position and low velocity
+        reward = - (np.cos(self.theta) - 1) - 0.1 * self.omega**2 - 0.001 * torque**2
+        done = False
+        return np.array([self.theta, self.omega]), reward, done
+  </code></pre>
+
+  <h2>28.3 Learning from Demonstrations</h2>
+  <p>
+    Many robotic tasks are challenging to learn from scratch because sparse
+    rewards and complex dynamics make exploration difficult.  Learning from
+    demonstrations (LfD) and imitation learning provide a warm start by
+    leveraging expert examples.  In behaviour cloning, a policy is trained
+    through supervised learning on a dataset of state–action pairs from
+    demonstrations.  More advanced methods such as Dataset Aggregation
+    (DAgger) mitigate distribution shift by iteratively collecting data from
+    the learner and querying the expert for corrective actions.  Inverse
+    reinforcement learning (IRL) attempts to recover the underlying reward
+    function that explains the expert’s behaviour, enabling generalisation to
+    new situations.
+  </p>
+  <p>
+    Combining LfD with RL can yield efficient training: an initial policy
+    obtained via imitation can be refined with RL to handle novel states and
+    improve performance.  For example, one might use behavioural cloning to
+    teach a manipulator to reach toward a target, then fine‑tune using
+    policy gradient methods to optimise for speed or energy efficiency.  In
+    robotics, demonstrations are often collected via teleoperation, kinesthetic
+    teaching (physically guiding the robot) or simulation.  Careful
+    pre‑processing of demonstration data—such as normalising states and
+    filtering noise—is important for successful imitation.
+  </p>
+  <p>
+    The following code demonstrates behaviour cloning for a simple 2D reaching
+    task.  We collect random examples of reaching a goal and train a neural
+    network to predict actions.  The learned policy can then be used as a
+    starting point for further reinforcement learning or deployed directly in
+    simulation.
+  </p>
+  <pre><code class="language-python">import torch
+import torch.nn as nn
+import torch.optim as optim
+
+# generate demonstration data for a 2D reaching problem
+states = []
+actions = []
+goal = torch.tensor([1.0, 1.0])
+for _ in range(1000):
+    s = torch.rand(2)  # random start
+    a = (goal - s)     # simple expert: move directly towards goal
+    states.append(s)
+    actions.append(a)
+
+states = torch.stack(states)
+actions = torch.stack(actions)
+
+# simple linear policy network
+policy_net = nn.Linear(2, 2)
+optimizer = optim.Adam(policy_net.parameters(), lr=0.05)
+
+# supervised training
+for epoch in range(200):
+    optimizer.zero_grad()
+    pred = policy_net(states)
+    loss = ((pred - actions)**2).mean()
+    loss.backward()
+    optimizer.step()
+  </code></pre>
+
+  <h2>28.4 Safety in Physical Systems</h2>
+  <p>
+    Safety is critical when deploying RL controllers on physical robots or
+    autonomous vehicles.  Unlike simulation, mistakes in the real world can
+    damage hardware or cause injury.  Safe RL seeks to enforce constraints
++    such as keeping joint torques within limits, avoiding collisions and
++    maintaining stability.  One approach is to design a safety layer that
++    monitors the proposed action from the policy and modifies or vetoes it
++    if executing the action would violate safety constraints.  This can be
++    implemented via control barrier functions, model predictive control or
++    formal verification.
+  </p>
+  <p>
+    Another strategy is to incorporate risk measures and constraints directly
+    into the learning objective.  Constrained policy optimisation methods
+    augment the reward with penalties for constraint violation and use
+    Lagrangian techniques to enforce safety budgets.  In multi‑objective
+    settings, designers may train separate value functions for performance
+    and safety and combine them via lexicographic or scalarised approaches.
+    Safe exploration techniques also guide the agent away from regions of the
+    state space where the model is uncertain or high reward can be achieved
+    only at unacceptable risk.
+  </p>
+  <p>
+    In practice, deploying RL in robotics often follows an incremental
+    process: algorithms are first trained in simulation with domain
+    randomisation, then tested in controlled laboratory environments, and
+    finally deployed on the physical system with monitoring and emergency
+    stop mechanisms.  Continual monitoring of sensor data and model
+    predictions allows for rapid detection of anomalies and roll‑back to safe
+    policies if necessary.  Combining RL with classical control and
+    engineering expertise remains essential for real‑world success.
+  </p>
+
+  <footer>
+    <strong>Sources</strong><br>
+    Domain randomisation improves robustness by randomising simulator
+    parameters such as sky colour, lane markings and lighting, forcing the
+    agent to generalise beyond a single simulation【537490670580488†L94-L120】.
+  </footer>
+</body>
+</html>

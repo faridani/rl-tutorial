@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 26 – Recommendations &amp; Personalization</title>
+  <style>
+    body { background-color: #ffffff; font-family: "Georgia", serif; margin: 40px; line-height: 1.6; color: #333333; }
+    pre { background: #f4f4f4; padding: 10px; border-left: 4px solid #cccccc; overflow-x: auto; }
+    code { font-family: monospace; }
+    h1, h2, h3 { color: #222222; }
+  </style>
+</head>
+<body>
+  <h1>Chapter 26 – Recommendations &amp; Personalization</h1>
+  <p>
+    Recommendation systems help users discover content and products that
+    match their interests.  Traditional recommenders optimise short‑term
+    metrics such as clicks or immediate engagement.  However, online
+    platforms like Spotify increasingly focus on <em>long‑term</em> user
+    satisfaction, retention and diversity.  Reinforcement learning offers
+    a principled way to optimise recommendations over time, balancing
+    exploration of new content with exploitation of known preferences and
+    accounting for delayed outcomes.  In this chapter we explore slate
+    recommendation, long‑horizon engagement, counterfactual evaluation and
+    fairness in recommendation.
+  </p>
+
+  <h2>26.1 Slate &amp; diversified bandits</h2>
+  <p>
+    Unlike single‑item recommendations, real systems present a <em>slate</em>
+    (a ranked list) of items.  The user interacts with the slate and may
+    click one or none.  Choosing slates introduces combinatorial
+    complexity and interactions among items.  Bandit algorithms can be
+    extended to slate recommendations by modelling the reward of a slate
+    as a function of the items it contains and their positions.  The
+    agent must select slates that maximise the expected utility while
+    exploring alternative combinations.  Diversification encourages
+    exploration by including items with uncertain reward estimates.
+  </p>
+  <p>
+    To handle slate bandits, one can use policy gradient methods that
+    parameterise the distribution over slates.  A common approach uses a
+    scoring function for each item; the policy samples a slate by
+    selecting items according to their scores.  The reward is the
+    observed user engagement (e.g., click or dwell time) minus a diversity
+    penalty if the slate is too homogeneous.  The policy updates its
+    parameters to increase expected reward while encouraging diversity.
+  </p>
+  <p>
+    Below is a simple Python example of a slate bandit.  We define
+    candidate items with unknown engagement probabilities and form a slate
+    of size two.  An ε‑greedy strategy selects items to maximise the
+    expected reward while occasionally exploring new combinations.
+  </p>
+  <pre><code># Simple slate bandit with epsilon-greedy
+import numpy as np
+
+n_items = 5
+true_probs = np.array([0.1, 0.2, 0.15, 0.05, 0.25])  # true click probabilities
+
+rng = np.random.default_rng(42)
+counts = np.zeros((n_items,))
+est_rewards = np.zeros((n_items,))
+
+epsilon = 0.1
+n_steps = 1000
+for t in range(n_steps):
+    # choose two items: greedy or random
+    if rng.uniform() < epsilon:
+        slate = rng.choice(n_items, size=2, replace=False)
+    else:
+        slate = np.argsort(-est_rewards)[:2]
+    # simulate user click: reward is 1 if any item clicked
+    click = rng.uniform() < true_probs[slate[0]] or rng.uniform() < true_probs[slate[1]]
+    reward = 1.0 if click else 0.0
+    # update estimates for both items
+    for i in slate:
+        counts[i] += 1
+        est_rewards[i] += (reward - est_rewards[i]) / counts[i]
+
+print("Estimated top items:", np.argsort(-est_rewards))
+</code></pre>
+  <p>
+    This slate bandit demonstrates how to allocate impressions across a
+    small set of items.  In practice, recommendation systems handle
+    millions of items, requiring scalable algorithms and approximate
+    inference.  Bandits remain a useful tool for online learning and
+    experimentation.
+  </p>
+
+  <h2>26.2 Long‑horizon engagement</h2>
+  <p>
+    Optimising recommendations for long‑term outcomes is challenging.  A
+    click today does not guarantee user satisfaction tomorrow.  The
+    Spotify research article notes that recommender systems are increasingly
+    tasked with improving users’ long‑term satisfaction and retention【342374887897059†L15-L45】.
+    Traditional approaches optimise short‑term proxies such as clicks or
+    stream starts, but these may not fully capture the nuance of
+    satisfaction【342374887897059†L31-L36】.  To bridge this gap, RL agents
+    explicitly model the delayed rewards of recommendations and treat the
+    problem as a sequential decision process.
+  </p>
+  <p>
+    The article describes a cold‑start challenge when recommending new
+    content: long‑term outcomes like engagement may not be observed for
+    weeks or months, delaying feedback【342374887897059†L19-L24】.  A key idea
+    is to use intermediate observations (e.g., daily engagement metrics)
+    as proxies for the long‑term reward【342374887897059†L73-L77】.  A reward
+    model can estimate long‑term outcomes from partial traces, enabling
+    RL algorithms to update policies before the full reward is observed.
+    The recommendation agent must trade off exploring new content to
+    improve its long‑term estimates against exploiting content known to
+    perform well.
+  </p>
+  <p>
+    We simulate this idea using a non‑contextual RL problem.  The agent
+    recommends items with unknown long‑term rewards but receives
+    intermediate feedback correlated with the final reward.  A Q‑learning
+    algorithm updates Q‑values based on the intermediate proxy and
+    eventually converges to a policy that maximises expected long‑term
+    reward.
+  </p>
+  <pre><code># Long-horizon recommendation with intermediate rewards
+import numpy as np
+
+n_items = 3
+true_long = np.array([0.2, 0.5, 0.3])  # true long-term success probabilities
+rng = np.random.default_rng(1)
+Q = np.zeros(n_items)
+alpha, gamma = 0.1, 0.9
+
+for episode in range(500):
+    item = rng.integers(n_items)
+    # simulate intermediate proxy: noisy linear function of long-term reward
+    proxy = true_long[item] + rng.normal(scale=0.05)
+    # immediate reward is proxy
+    Q[item] += alpha * (proxy + gamma * np.max(Q) - Q[item])
+
+print("Estimated long-term reward ranking:", np.argsort(-Q))
+</code></pre>
+  <p>
+    This toy example uses a proxy for long‑term reward to update Q‑values.
+    More sophisticated approaches use function approximation and model the
+    full distribution of long‑term outcomes.  Off‑policy RL and
+    representation learning can further improve sample efficiency.
+  </p>
+
+  <h2>26.3 Counterfactual evaluation</h2>
+  <p>
+    Deploying new recommendation policies requires evaluating their
+    performance without incurring user dissatisfaction.  <em>Counterfactual
+    evaluation</em> estimates the expected reward of a candidate policy using
+    historical data collected under a different policy.  In bandit and RL
+    settings, importance sampling and propensity scoring adjust for the
+    mismatch between the behaviour policy that generated the data and the
+    target policy.  Weighted importance sampling and doubly robust
+    estimators reduce variance and bias.
+  </p>
+  <p>
+    Suppose we have logged data consisting of contexts, actions (items),
+    rewards (e.g., clicks) and propensities (probabilities under the
+    behaviour policy).  To evaluate a new policy π, we compute the
+    importance weight w = π(a|x) / μ(a|x) for each logged event, where μ
+    is the behaviour policy.  The estimated value is the average of
+    w × r.  To reduce variance, self‑normalised or clipped weights are used.
+    In RL, off‑policy evaluation methods such as per‑decision importance
+    sampling and doubly robust temporal difference estimates generalise
+    these concepts to sequential settings.
+  </p>
+  <p>
+    The pseudocode below outlines counterfactual evaluation for a
+    contextual bandit.  The method estimates the expected click‑through
+    rate of a new policy using logged data.
+  </p>
+  <pre><code># Counterfactual evaluation for a recommendation policy
+# Given logged data (x_i, a_i, r_i, mu_i) and a target policy pi(a|x)
+estimated_value = 0
+for each logged event i:
+    w = pi(a_i | x_i) / mu_i  # importance weight
+    estimated_value += w * r_i
+estimated_value /= number_of_events
+</code></pre>
+  <p>
+    In practice, careful design of logging policies and variance reduction
+    techniques are essential for reliable counterfactual evaluation.
+  </p>
+
+  <h2>26.4 Fairness &amp; exposure control</h2>
+  <p>
+    Recommendation systems can inadvertently create or amplify biases.  If
+    a recommender primarily serves popular items, niche or minority
+    content may receive little exposure.  To address fairness, one can
+    define additional reward terms or constraints that ensure diverse
+    exposure across item categories or user groups.  For example, the
+    agent may receive a bonus for recommending items from underrepresented
+    genres or from creators with low exposure.  Alternatively, one can
+    impose constraints on the slate composition, such as requiring at
+    least one item from each category.
+  </p>
+  <p>
+    Another aspect is controlling the exposure of sensitive content.  When
+    recommending news articles or ads, the system should avoid exposing
+    users to harmful or misleading information.  RL agents can be trained
+    with safety filters that penalise undesirable content.  Off‑policy
+    evaluation and simulation can help assess fairness and safety before
+    deployment.
+  </p>
+  <p>
+    Below is an illustrative snippet demonstrating how a reward function
+    might incorporate diversity and fairness in a slate bandit.  The
+    diversity bonus encourages the policy to include items from at least
+    two different categories.
+  </p>
+  <pre><code># Reward function with diversity bonus
+categories = ['A', 'B', 'C', 'A', 'B']
+def reward_with_fairness(slate, clicks):
+    base_reward = float(any(clicks))  # reward for any click
+    # diversity bonus if slate contains items from at least two categories
+    if len(set(categories[i] for i in slate)) &gt;= 2:
+        base_reward += 0.2
+    return base_reward
+</code></pre>
+  <p>
+    By designing reward functions and constraints that reflect fairness and
+    exposure goals, RL agents can align recommendation systems with
+    broader ethical considerations.
+  </p>
+
+  <h2>Summary</h2>
+  <p>
+    Reinforcement learning provides a versatile framework for
+    recommendation and personalization.  Slate bandits generalise
+    single‑arm bandits to ranked lists of items, and diversified bandits
+    encourage exploration.  Long‑horizon RL addresses the challenge of
+    optimising for delayed user satisfaction, as highlighted by Spotify
+    research【342374887897059†L15-L45】.  Counterfactual evaluation enables
+    offline assessment of new policies, while fairness and exposure
+    control mitigate biases and promote diversity.  As recommendation
+    systems become central to digital experiences, RL will play an
+    increasingly important role in aligning them with user goals and
+    societal values.
+  </p>
+
+  <h2>Sources</h2>
+  <p>
+    The discussion on long‑term recommendation and the use of intermediate
+    outcomes comes from the Spotify research article, which emphasises
+    optimising for long‑term satisfaction and using intermediate
+    observations to estimate delayed rewards【342374887897059†L15-L45】【342374887897059†L73-L77】.  
+  </p>
+</body>
+</html>

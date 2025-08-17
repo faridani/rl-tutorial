@@ -1,0 +1,312 @@
+<!--
+  Chapter 27: Healthcare & Finance
+
+  This chapter is part of Part VII of a reinforcement learning (RL) book
+  focusing on applications beyond robotics.  It explores how RL can help
+  design sequential treatment policies in healthcare and optimise
+  portfolio management in finance.  Each section includes theoretical
+  explanations, illustrative code examples in Python, and references to
+  authoritative sources.  The document is styled with a light theme
+  and uses semantic HTML elements for readability.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 27 – Healthcare &amp; Finance</title>
+  <style>
+    body {
+      background: #ffffff;
+      color: #222;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      margin: 40px;
+      line-height: 1.6;
+    }
+    h1, h2, h3 {
+      color: #2c3e50;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-family: "Courier New", monospace;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    footer {
+      margin-top: 40px;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <h1>27 Healthcare &amp; Finance</h1>
+  <p>
+    Reinforcement learning (RL) has seen increasing adoption in domains where decisions
+    must be made sequentially under uncertainty.  In healthcare, clinicians must
+    choose treatments and interventions over time while considering patient
+    responses and side effects.  In finance, portfolio managers constantly
+    rebalance assets to maximise risk‑adjusted returns.  RL techniques provide
+    a principled framework for learning optimal strategies from data through
+    trial and error.  This chapter introduces several applications in
+    healthcare and finance, illustrated with simplified toy problems and
+    accompanied by practical code examples.
+  </p>
+
+  <h2>27.1 Treatment Policy Optimisation</h2>
+  <p>
+    Healthcare often involves sequential decision making: physicians monitor a
+    patient’s state, administer a treatment, observe the effect, and repeat.
+    Traditional clinical guidelines may not adapt well to individual patient
+    heterogeneity.  Reinforcement learning offers a way to learn personalised
+    treatment policies directly from data by modelling the problem as a Markov
+    decision process (MDP).  The state encodes patient health indicators,
+    actions correspond to treatment options, and rewards represent clinical
+    outcomes.  By interacting with a simulator or historical data, an RL agent
+    can discover policies that maximise expected health outcomes over a
+    treatment horizon.
+  </p>
+  <p>
+    A primer on the application of RL in clinical decision making explains
+    that RL can handle uncertainty in physiological responses and discover
+    tailored strategies that improve long‑term outcomes.  It highlights that
+    RL learns by observing state transitions and rewards from treatments,
+    allowing personalised interventions and efficient resource allocation【46042848163055†L196-L217】.
+    Because patient data are sensitive and costly to collect, safe and
+    efficient learning algorithms, along with careful off‑policy evaluation,
+    are essential.  For chronic diseases, RL can help determine when to
+    administer medication, adjust dosages, or recommend lifestyle changes.
+  </p>
+  <p>
+    The following Python snippet shows a toy MDP where an agent must choose
+    between two treatments (“A” or “B”) for a simulated patient.  The
+    environment randomly generates a health level between 0 and 1; treatment A
+    slightly increases the health but may be expensive, whereas treatment B is
+    cheaper but less effective.  The agent uses tabular Q‑learning to learn
+    which action maximises the cumulative health improvement.  In practice,
+    more sophisticated algorithms such as actor–critic or batch RL models are
+    used to handle continuous state spaces and safety constraints.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+# Simple MDP for treatment planning
+class TreatmentEnv:
+    def __init__(self):
+        self.reset()
+    def reset(self):
+        # health level ∈ {0,1,2,3,4} for discretisation
+        self.health = np.random.choice(5)
+        return self.health
+    def step(self, action):
+        # action 0: treatment A, 1: treatment B
+        # deterministic state transition for simplicity
+        if action == 0:
+            # treatment A improves health more on average
+            reward = np.random.normal(1.0, 0.2) - 0.3  # subtract cost
+        else:
+            reward = np.random.normal(0.5, 0.2) - 0.1
+        self.health = np.clip(self.health + int(reward &gt; 0), 0, 4)
+        done = self.health == 4  # goal is perfect health
+        return self.health, reward, done
+
+
+env = TreatmentEnv()
+Q = np.zeros((5, 2))  # Q[state, action]
+alpha, gamma, epsilon = 0.1, 0.9, 0.1
+
+for episode in range(1000):
+    state = env.reset()
+    done = False
+    while not done:
+        # ε-greedy policy
+        if np.random.rand() &lt; epsilon:
+            action = np.random.choice(2)
+        else:
+            action = np.argmax(Q[state])
+        next_state, reward, done = env.step(action)
+        # Q-learning update
+        Q[state, action] += alpha * (reward + gamma * np.max(Q[next_state]) - Q[state, action])
+        state = next_state
+  </code></pre>
+
+  <h2>27.2 Off‑Policy Safety and Evaluation</h2>
+  <p>
+    In high‑stakes domains like medicine, experimentation on patients is
+    unethical and dangerous.  RL algorithms therefore must be evaluated and
+    optimised using historical data rather than online interaction.  Off‑policy
+    evaluation (OPE) methods estimate the performance of a new policy given data
+    collected under a different policy.  By weighting returns using
+    importance sampling or learning models of the environment, one can
+    approximate the expected return of an untested policy while respecting
+    ethical constraints.  Conservative algorithms such as Batch‑Constrained
+    Q‑learning (BCQ) and Conservative Q‑learning (CQL) restrict the learned
+    policy to stay close to the behaviour policy to reduce distributional
+    shift and avoid dangerous actions.
+  </p>
+  <p>
+    Importance sampling computes an unbiased estimate of the return by
+    reweighting each trajectory’s reward by the likelihood ratio between the
+    target policy and the behaviour policy.  However, variance can explode
+    when the policies differ.  Weighted importance sampling and doubly robust
+    estimators mitigate this by normalising weights or combining model-based
+    predictions with importance weights.  In healthcare, one might train a
+    reward model from expert demonstrations, use OPE to evaluate candidate
+    policies offline, and only deploy those that meet safety thresholds.
+  </p>
+  <p>
+    The following pseudo‑code illustrates off‑policy evaluation using weighted
+    importance sampling.  Given episodes collected by a behaviour policy
+    \(b\), we compute per‑episode weights as the product of target/behaviour
+    probabilities for chosen actions.  The estimated return is the weighted
+    average of discounted rewards.  In practice, one would also incorporate
+    variance reduction techniques and limit policy deviation.
+  </p>
+  <pre><code class="language-python">def weighted_importance_sampling(episodes, target_policy, behavior_policy, gamma=0.99):
+    """
+    episodes: list of trajectories, each a list of (state, action, reward) tuples
+    target_policy: function mapping state -&gt; action probability distribution
+    behavior_policy: function mapping state -&gt; action distribution under which episodes were collected
+    returns: estimated value of target policy
+    """
+    weighted_returns = []
+    total_weight = 0.0
+    for traj in episodes:
+        weight = 1.0
+        G = 0.0
+        discount = 1.0
+        for s, a, r in traj:
+            # accumulate reward
+            G += discount * r
+            discount *= gamma
+            # multiply importance ratios
+            weight *= target_policy(s)[a] / behavior_policy(s)[a]
+        weighted_returns.append(weight * G)
+        total_weight += weight
+    return sum(weighted_returns) / max(total_weight, 1e-8)
+  </code></pre>
+
+  <h2>27.3 Portfolio Management &amp; Execution</h2>
+  <p>
+    Financial portfolio management is a natural setting for sequential
+    decision making.  At each time step, an investor allocates capital among
+    assets based on market information and beliefs.  Reinforcement learning
+    enables the investor to learn a dynamic strategy that adapts to market
+    conditions, handles transaction costs, and trades off risk and return.  A
+    recent survey on RL in finance notes that RL agents interact with
+    simulated markets to discover strategies that outperform static baselines
+    and classical optimisation methods【734510464231265†L31-L49】.  By learning
+    from experience, RL can explicitly account for transaction costs and
+    dynamic constraints【734510464231265†L86-L100】.
+  </p>
+  <p>
+    Techniques such as Deep Q‑Networks (DQN), Deep Deterministic Policy
+    Gradient (DDPG), Proximal Policy Optimisation (PPO), Advantage Actor–Critic
+    (A2C) and asynchronous variants (A3C) have been applied to portfolio
+    optimisation【734510464231265†L74-L80】.  These methods learn to map
+    state observations—such as recent price movements, volatility and
+    macroeconomic indicators—to portfolio weights.  In backtests, RL agents
+    can achieve higher risk‑adjusted returns than mean–variance portfolios and
+    other heuristic strategies【734510464231265†L110-L117】.  However, RL
+    algorithms must be designed to avoid overfitting to historical data and
+    to respect regulatory constraints such as leverage limits and risk caps.
+  </p>
+  <p>
+    The code below demonstrates a simple RL portfolio problem.  The agent
+    observes the price of a single stock that evolves randomly and decides
+    whether to hold the stock or stay in cash.  The reward is the change in
+    portfolio value.  We use Q‑learning to learn the optimal buy/hold policy.
+    This toy example omits transaction costs and risk constraints but
+    illustrates how RL can be applied to sequential trading.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+np.random.seed(0)
+
+class MarketEnv:
+    def __init__(self, steps=100):
+        self.steps = steps
+        self.reset()
+    def reset(self):
+        self.t = 0
+        self.price = 100.0
+        self.position = 0  # 0: cash, 1: invested
+        return (self.price, self.position)
+    def step(self, action):
+        # action: 0 stay in cash, 1 invest
+        prev_price = self.price
+        # simulate price change as geometric Brownian motion
+        self.price *= np.exp(np.random.normal(0, 0.01))
+        reward = 0
+        if self.position == 1:
+            reward = self.price - prev_price  # gain/loss on holding
+        # update position based on action
+        self.position = action
+        self.t += 1
+        done = (self.t == self.steps)
+        return (self.price, self.position), reward, done
+
+# Q-learning for the portfolio problem
+env = MarketEnv(steps=200)
+Q = np.zeros((200, 2))  # discretise time as state dimension for simplicity
+alpha, gamma, epsilon = 0.1, 0.9, 0.1
+
+for episode in range(500):
+    state = 0
+    env.reset()
+    done = False
+    while not done:
+        if np.random.rand() &lt; epsilon:
+            action = np.random.choice(2)
+        else:
+            action = np.argmax(Q[state])
+        (_, _), reward, done = env.step(action)
+        next_state = state + 1
+        Q[state, action] += alpha * (reward + gamma * np.max(Q[next_state]) - Q[state, action])
+        state = next_state
+  </code></pre>
+
+  <h2>27.4 Risk &amp; Regulation</h2>
+  <p>
+    Financial applications of RL must contend with risk management and regulatory
+    requirements.  Unlike games or simulated environments, real markets are
+    partially observable, non‑stationary and adversarial.  Agents must avoid
+    catastrophic losses, respect leverage and margin requirements, and ensure
+    compliance with trading regulations.  In health applications, ethical
+    considerations similarly restrict permissible actions and require
+    transparency and fairness.
+  </p>
+  <p>
+    Risk‑sensitive RL extends the standard objective of maximising expected
+    return by incorporating risk measures such as variance, Value at Risk
+    (VaR) or Conditional Value at Risk (CVaR).  Constrained MDPs and
+    Lagrangian methods can enforce budget or risk constraints by introducing
+    penalty multipliers.  In practice, practitioners often train ensembles
+    of RL agents to estimate uncertainty and adopt conservative policies when
+    uncertainty is high.  Regulators may also require backtesting, stress
+    testing and model auditing to validate RL‑based trading systems.
+  </p>
+  <p>
+    Software platforms such as OpenAI Gym and FinRL provide benchmark
+    environments for RL in finance.  These include realistic transaction
+    costs, slippage and slashing, making them ideal for prototyping RL
+    strategies under regulation‑aware settings.  While RL has shown promise
+    in both healthcare and finance, responsible deployment requires close
+    collaboration with domain experts, robust off‑policy evaluation and
+    continuous monitoring.
+  </p>
+
+  <footer>
+    <strong>Sources</strong><br>
+    RL for clinical decision making emphasises sequential treatments and
+    personalised interventions【46042848163055†L196-L217】.  Dynamic portfolio
+    management using RL interacts with simulated markets to handle
+    transaction costs and constraints【734510464231265†L31-L49】【734510464231265†L74-L80】【734510464231265†L86-L100】.
+    RL agents can outperform classical strategies and achieve better
+    risk‑adjusted returns【734510464231265†L110-L117】.
+  </footer>
+</body>
+</html>
