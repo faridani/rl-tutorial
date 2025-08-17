@@ -198,6 +198,26 @@ The following two lessons should prepare you for almost all of the math that you
 * Learning from Demonstrations
 * Safety in Physical Systems
 
+
+# Part VIII — Engineering & Production
+
+## Chapter 29. Experimentation & Evaluation
+* Metrics & Confidence Intervals
+* Ablations & Hyperparameter Tuning
+* Statistical Significance
+* Reproducibility & Seeding
+
+## Chapter 30. Systems, Scaling & Tooling
+* Vectorized Environments & Parallelism
+* Distributed Training & Rollouts
+* Replay Storage & Checkpointing
+* Monitoring & Dashboards
+
+## Chapter 31. Deployment & Operations
+* Serving Policies Online
+* Guardrails, Kill‑Switches & Rollbacks
+* Drift Detection & Retraining
+* Human‑in‑the‑Loop
   
 # Part 4  
 
