@@ -152,6 +152,53 @@ The following two lessons should prepare you for almost all of the math that you
 * Cooperation vs. Competition
 * Opponent Modeling & Equilibria
 
+
+# Part VI — Imitation, Preferences & LLMs
+## Chapter 22. Imitation & Inverse RL
+* Behavior Cloning
+* DAgger & Dataset Aggregation
+* Maximum‑Entropy IRL
+* Adversarial Imitation (GAIL, AIRL)
+
+## Chapter 23. Preference‑Based RL & Alignment
+* Reward Modeling from Human Feedback
+* RLHF with PPO
+* GRPO (Group Relative Policy Optimization)
+* Safety, Bias & Evaluation
+
+# Part VII — Applications (Beyond Robotics Emphasis)
+
+## Chapter 24. Revenue & Pricing
+* Dynamic Pricing as Bandit/MDP
+* Contextual Pricing & Elasticity
+* Auction & Ad Bidding
+* Budget Pacing & Constraints
+
+## Chapter 25. Operations & Supply Chain
+* Inventory Control
+* Routing & Dispatch
+* Queueing & Service Control
+* Energy & Demand Response
+
+## Chapter 26. Recommendations & Personalization
+* Slate & Diversified Bandits
+* Long‑Horizon Engagement
+* Counterfactual Evaluation
+* Fairness & Exposure Control
+
+## Chapter 27. Healthcare & Finance
+* Treatment Policy Optimization
+* Off‑Policy Safety
+* Portfolio Management & Execution
+* Risk & Regulation
+
+## Chapter 28. Robotics & Control (Focused Overview)
+* Continuous Control Benchmarks
+* Sim2Real & Domain Randomization
+* Learning from Demonstrations
+* Safety in Physical Systems
+
+  
 # Part 4  
 
 * Q-Learning, SARSA, Double Q-Learning Lab [lab and tutorial](q-learning-lab.html)
