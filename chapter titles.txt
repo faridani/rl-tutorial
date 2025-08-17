@@ -1,0 +1,379 @@
+Part I — Foundations
+
+1. An RL Primer
+
+Agent–Environment Interface
+
+Rewards, Returns, and Discounting
+
+Episodic vs. Continuing Tasks
+
+Exploration–Exploitation
+
+2. Mathematical Toolkit
+
+Probability & Expectation
+
+Markov Chains & Stationarity
+
+Bellman Equations & Contractions
+
+Linear Algebra Essentials
+
+3. Optimization Foundations for RL
+
+Gradient Descent & Stochastic Approximation
+
+Momentum, RMSProp & Adam
+
+Natural Gradient & Fisher Information
+
+Constrained Optimization & Lagrangians
+
+4. Python & Tools for RL
+
+NumPy & Vectorization
+
+Environment APIs (Gymnasium, PettingZoo)
+
+Experiment Tracking & Reproducibility
+
+Testing & Debugging RL
+
+Part II — Bandits & MDPs
+
+5. Multi‑Armed Bandits
+
+ε‑Greedy Strategies
+
+Upper Confidence Bounds (UCB)
+
+Thompson Sampling
+
+Contextual Bandits & LinUCB
+
+6. Markov Decision Processes
+
+MDP Formalism
+
+Value Functions & Bellman Operators
+
+Policy Evaluation
+
+Policy & Value Iteration
+
+7. Partially Observable MDPs
+
+Belief States & Bayes Filters
+
+Point‑Based Planning
+
+POMDPs with Recurrent Policies
+
+Information Gathering
+
+Part III — Value Learning & Control
+
+8. Monte Carlo & Temporal‑Difference Learning
+
+First‑Visit & Every‑Visit MC
+
+TD(0) & n‑Step TD
+
+Eligibility Traces & TD(λ)
+
+Bias–Variance Tradeoffs
+
+9. Tabular Control Methods
+
+SARSA
+
+Q‑Learning
+
+Expected SARSA
+
+Double Learning
+
+10. Exploration in Control
+
+Epsilon Schedules & Softmax
+
+Count‑Based Exploration
+
+Intrinsic Motivation (RND, ICM)
+
+Directed Information Gain
+
+11. Function Approximation
+
+Linear Approximation
+
+Feature Construction
+
+Gradient TD Methods
+
+Regularization & Stability
+
+Part IV — Deep RL
+
+12. Deep Q‑Learning
+
+DQN Architecture
+
+Experience Replay & Target Networks
+
+Stability Pathologies
+
+Data‑Efficiency Tricks
+
+13. Advanced Value Methods
+
+Double & Dueling DQN
+
+Prioritized Replay
+
+Distributional RL (C51, QR‑DQN)
+
+Noisy Nets & Parameter Noise
+
+14. Policy Gradient Methods
+
+REINFORCE & Baselines
+
+Generalized Advantage Estimation (GAE)
+
+Natural Gradients
+
+Entropy Regularization
+
+15. Actor–Critic & Trust Regions
+
+A2C/A3C
+
+TRPO
+
+PPO (Clip & Penalty)
+
+Stability & Hyperparameters
+
+16. Maximum Entropy & Continuous Control
+
+Soft Actor–Critic (SAC)
+
+Twin Delayed DDPG (TD3)
+
+Deterministic Policies (DDPG)
+
+Action Squashing & Exploration Noise
+
+17. Model‑Based RL
+
+Dyna‑Style Planning
+
+Latent Dynamics Models
+
+Model‑Predictive Control (MPC)
+
+Uncertainty & Ensembles
+
+Part V — Structure & Constraints
+
+18. Hierarchical & Goal‑Conditioned RL
+
+Options & Skills
+
+Subgoal Discovery
+
+Goal‑Conditioned Policies
+
+Hindsight Experience Replay (HER)
+
+19. Offline & Batch RL
+
+Off‑Policy Evaluation (IS, WIS, DR)
+
+Batch‑Constrained Q‑Learning (BCQ)
+
+BEAR & CQL
+
+Distribution Shift & Conservatism
+
+20. Safe & Risk‑Sensitive RL
+
+Constrained MDPs
+
+Risk Measures (CVaR)
+
+Robust MDPs
+
+Shielding & Safety‑Critical Evaluation
+
+21. Multi‑Agent RL
+
+Markov Games
+
+Centralized Training, Decentralized Execution
+
+Cooperation vs. Competition
+
+Opponent Modeling & Equilibria
+
+Part VI — Imitation, Preferences & LLMs
+
+22. Imitation & Inverse RL
+
+Behavior Cloning
+
+DAgger & Dataset Aggregation
+
+Maximum‑Entropy IRL
+
+Adversarial Imitation (GAIL, AIRL)
+
+23. Preference‑Based RL & Alignment
+
+Reward Modeling from Human Feedback
+
+RLHF with PPO
+
+GRPO (Group Relative Policy Optimization)
+
+Safety, Bias & Evaluation
+
+Part VII — Applications (Beyond Robotics Emphasis)
+
+24. Revenue & Pricing
+
+Dynamic Pricing as Bandit/MDP
+
+Contextual Pricing & Elasticity
+
+Auction & Ad Bidding
+
+Budget Pacing & Constraints
+
+25. Operations & Supply Chain
+
+Inventory Control
+
+Routing & Dispatch
+
+Queueing & Service Control
+
+Energy & Demand Response
+
+26. Recommendations & Personalization
+
+Slate & Diversified Bandits
+
+Long‑Horizon Engagement
+
+Counterfactual Evaluation
+
+Fairness & Exposure Control
+
+27. Healthcare & Finance
+
+Treatment Policy Optimization
+
+Off‑Policy Safety
+
+Portfolio Management & Execution
+
+Risk & Regulation
+
+28. Robotics & Control (Focused Overview)
+
+Continuous Control Benchmarks
+
+Sim2Real & Domain Randomization
+
+Learning from Demonstrations
+
+Safety in Physical Systems
+
+Part VIII — Engineering & Production
+
+29. Experimentation & Evaluation
+
+Metrics & Confidence Intervals
+
+Ablations & Hyperparameter Tuning
+
+Statistical Significance
+
+Reproducibility & Seeding
+
+30. Systems, Scaling & Tooling
+
+Vectorized Environments & Parallelism
+
+Distributed Training & Rollouts
+
+Replay Storage & Checkpointing
+
+Monitoring & Dashboards
+
+31. Deployment & Operations
+
+Serving Policies Online
+
+Guardrails, Kill‑Switches & Rollbacks
+
+Drift Detection & Retraining
+
+Human‑in‑the‑Loop
+
+Part IX — Theory Deep Dives
+
+32. Convergence & Stability
+
+Projected Bellman Operator
+
+Deadly Triad
+
+Divergence Examples
+
+Remedies & Constraints
+
+33. Regret, PAC & Sample Complexity
+
+Bandit Regret Bounds
+
+PAC‑MDP & Optimism
+
+Function Approximation Regret
+
+Lower Bounds & Minimax
+
+34. Stochastic Approximation & Natural Gradient
+
+Robbins–Monro
+
+Polyak–Ruppert Averaging
+
+Fisher Information & Natural Gradient
+
+Trust‑Region Connections
+
+Part X — Projects & Roadmaps
+
+35. Hands‑On Projects & Templates
+
+Pricing Simulator
+
+Inventory Sandbox
+
+Ad Auction Lab
+
+Gridworlds & Mazes
+
+36. Reading Lists & Research Roadmaps
+
+Classic Texts & Courses
+
+Key Papers by Topic
+
+Open Problems & Trends
+
+Community & Conferences
