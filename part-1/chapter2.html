@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 2 – Mathematical Toolkit</title>
+    <style>
+        /* Use the same elegant styling as chapter 1 */
+        body {
+            background: #fff;
+            color: #222;
+            font-family: "Georgia", "Times New Roman", serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0 1.5rem;
+        }
+        h1, h2, h3 {
+            color: #003366;
+            margin-top: 1.2em;
+        }
+        pre {
+            background: #f8f8f8;
+            border: 1px solid #e0e0e0;
+            padding: 1em;
+            overflow-x: auto;
+        }
+        code {
+            font-family: "Courier New", Courier, monospace;
+            color: #C7254E;
+        }
+        .citation {
+            font-size: 0.85em;
+            vertical-align: super;
+        }
+        footer {
+            margin-top: 3em;
+            border-top: 1px solid #ddd;
+            padding: 1em 0;
+            font-size: 0.8em;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Chapter 2 – Mathematical Toolkit</h1>
+
+<h2>2.1 Probability and Expectation</h2>
+<p>
+Probability theory provides the language for describing uncertainty and randomness.
+In reinforcement learning an agent often models the environment and rewards as
+random variables. A random variable <em>X</em> can take on different values from its
+support with associated probabilities. The <em>expected value</em>, or expectation,
+captures the long–run average value of <em>X</em>. The expectation is not necessarily a
+value that one might observe directly; instead it is a weighted average of the
+possible outcomes, where the weights are the probabilities【572876517659262†L256-L265】.
+For a discrete random variable with possible values <span class="math">\(x_i\)</span> and
+probabilities <span class="math">\(p_i\)</span>, the expectation is defined as
+<span class="math">\(\mathrm{E}[X] = \sum_i x_i p_i\)</span>. When the variable is
+continuous, the sum becomes an integral.
+</p>
+<p>
+Expectations are ubiquitous in RL: value functions, returns and policy gradients
+are all expectations of random variables under different distributions. Because
+expectation is linear, one can often simplify complex expressions by
+interchanging expectation with sums or integrals. For example,
+<span class="math">\(\mathrm{E}[aX + bY] = a\,\mathrm{E}[X] + b\,\mathrm{E}[Y]\)</span> for
+constants <span class="math">\(a,b\)</span>. This property allows the combination of
+multiple random signals into a single weighted estimate. It also justifies the
+use of Monte Carlo methods, where we approximate expectations by sample
+averages. As the number of samples increases, the average converges to the true
+expectation.
+</p>
+<p>
+To illustrate, consider a simple lottery that pays <code>$10</code> with probability
+<code>0.3</code> and <code>$0</code> otherwise. The expected payout is
+<span class="math">\(10\times 0.3 + 0\times 0.7 = 3\)</span>, meaning that on
+average the game is worth three dollars. We can estimate this in Python by
+generating Bernoulli samples and computing their mean. Because expectation is
+linear, the sample mean converges to the true value as the number of trials
+increases.
+</p>
+<pre><code>import random
+
+# simulate 10,000 plays of the lottery
+n_trials = 10000
+rewards = [10 if random.random() &lt; 0.3 else 0 for _ in range(n_trials)]
+expected_payout = sum(rewards) / n_trials
+print(f"Empirical expected payout: {expected_payout:.2f}")  # ≈ 3
+</code></pre>
+
+<h2>2.2 Markov Chains and Stationarity</h2>
+<p>
+A Markov chain is a type of stochastic process in which the probability of each
+event depends only on the current state, not on the sequence of past states.
+Informally this is often described by the phrase “memorylessness”: what happens
+next depends only on the state of affairs now【759637766467329†L282-L327】. The chain moves
+between states at discrete time steps according to a transition matrix, and it
+may have either a finite or a countably infinite state space. The memoryless
+property allows us to model complex systems with simple dynamics; it is a
+cornerstone of temporal models used in RL.
+</p>
+<p>
+A discrete‐time Markov chain is fully specified by three elements: a state
+space <span class="math">\(S\)</span>, a transition matrix <span class="math">\(P\)</span> where
+<span class="math">\(P_{ij} = \Pr(s_{t+1} = j \mid s_t = i)\)</span>, and an initial
+distribution over states. At each step, the process selects a new state
+according to the row of <span class="math">\(P\)</span> corresponding to the current state.
+In many applications, we care about the <em>stationary distribution</em> of a Markov
+chain, which is a probability distribution <span class="math">\(\pi\)</span> satisfying
+<span class="math">\(\pi = \pi P\)</span>. If the chain is irreducible and aperiodic,
+repeated application of <span class="math">\(P\)</span> drives any initial distribution
+towards this stationary distribution.
+</p>
+<p>
+We can explore these ideas with code. Consider a simple weather model with
+states <code>0</code> (sunny) and <code>1</code> (rainy). Suppose the transition matrix is
+<code>[[0.9, 0.1], [0.5, 0.5]]</code>. Starting from a sunny day, we can simulate the
+weather over many days and estimate the fraction of time spent in each state.
+We can also solve for the stationary distribution analytically by finding the
+eigenvector of <span class="math">\(P^\top\)</span> associated with eigenvalue 1.
+</p>
+<pre><code>import numpy as np
+
+# transition matrix P
+P = np.array([[0.9, 0.1],
+              [0.5, 0.5]])
+# simulate Markov chain
+n_steps = 10000
+state = 0  # start in the sunny state
+counts = np.zeros(2, dtype=int)
+for _ in range(n_steps):
+    counts[state] += 1
+    state = np.random.choice([0, 1], p=P[state])
+empirical_dist = counts / n_steps
+
+# stationary distribution via eigenvector
+evals, evecs = np.linalg.eig(P.T)
+stationary = evecs[:, np.isclose(evals, 1.0)].flatten().real
+stationary /= stationary.sum()
+
+print(f"Empirical distribution: {empirical_dist}")
+print(f"Stationary distribution: {stationary}")
+</code></pre>
+
+<h2>2.3 Bellman Equations and Contraction Mappings</h2>
+<p>
+Value functions play a central role in reinforcement learning. For a fixed policy
+<span class="math">\(\pi\)</span>, the <em>state value function</em> <span class="math">\(V^\pi(s)\)</span>
+represents the expected return when starting from state <em>s</em> and then following
+<span class="math">\(\pi\)</span> forever. Similarly, the <em>action value function</em>
+<span class="math">\(Q^\pi(s,a)\)</span> is the expected return starting from state
+<em>s</em>, taking action <em>a</em>, and then following <span class="math">\(\pi\)</span> thereafter. These
+functions satisfy recursive relationships known as the <em>Bellman equations</em>:
+</p>
+<p>
+<span class="math">\[\begin{aligned}
+V^\pi(s) &= \mathbb{E}_{a\sim\pi(\cdot\mid s)} \bigl[ R(s,a) + \gamma
+\sum_{s'} P(s'\mid s,a) V^\pi(s')\bigr],\\
+Q^\pi(s,a) &= R(s,a) + \gamma \sum_{s'} P(s'\mid s,a)
+\mathbb{E}_{a'\sim\pi(\cdot\mid s')} [ Q^\pi(s',a') ].
+\end{aligned}\]</span>
+These equations express the value of a state or state–action pair in terms of
+immediate reward plus the discounted value of successor states. Defining a
+mapping <span class="math">\(\mathcal{B}_\pi\)</span> that sends <span class="math">\(Q\)</span> to the right-hand
+side of the Bellman equation, it can be shown that this mapping is a
+<em>contraction</em> with modulus <span class="math">\(\gamma\)</span>: for any two Q-functions
+<span class="math">\(Q\)</span> and <span class="math">\(U\)</span>,
+<span class="math">\(\|\mathcal{B}_\pi[Q] - \mathcal{B}_\pi[U]\|_\infty \le
+\gamma\, \| Q - U \|_\infty\)</span>. Repeated application of the Bellman
+operator therefore converges to the unique fixed point <span class="math">\(Q^\pi\)</span>【587114077902700†L21-L63】.
+</p>
+<p>
+This contraction property underpins dynamic programming algorithms such as
+<em>value iteration</em> and <em>policy iteration</em>. In value iteration, we start with an
+arbitrary value function and repeatedly apply the Bellman optimality operator
+<span class="math">\(\mathcal{T}\)</span>, which uses a maximization over actions,
+until convergence. Because <span class="math">\(\mathcal{T}\)</span> is a contraction, the
+sequence of value functions converges to the optimal value function
+<span class="math">\(V^\*\)</span>. Policy iteration alternates between policy evaluation
+(solving the Bellman equations for a fixed policy) and policy improvement
+(greedily improving the policy with respect to the current value function). Both
+methods rely on the Banach fixed point theorem.
+</p>
+<p>
+Below is a simple implementation of iterative policy evaluation for a small
+four‑state MDP. The environment is specified by a reward vector <code>r</code> and a
+transition probability matrix <code>P</code>. We repeatedly update the value estimate
+until it stabilizes within a small tolerance.
+</p>
+<pre><code>import numpy as np
+
+# Define an MDP with 4 states and 2 actions
+P = {
+    0: {0: [(1.0, 0, 0), (0.0, 0, 0)], 1: [(1.0, 1, 0), (0.0, 1, 0)]},
+    1: {0: [(1.0, 2, 1)], 1: [(1.0, 2, 1)]},
+    2: {0: [(1.0, 3, 2)], 1: [(1.0, 3, 2)]},
+    3: {0: [(1.0, 3, 0)], 1: [(1.0, 3, 0)]},
+}
+gamma = 0.9
+V = np.zeros(4)
+pi = {s: 0 for s in range(4)}  # fixed policy: always take action 0
+for iteration in range(100):
+    delta = 0
+    for s in range(4):
+        v_old = V[s]
+        a = pi[s]
+        v_new = 0
+        for prob, s_next, reward in P[s][a]:
+            v_new += prob * (reward + gamma * V[s_next])
+        V[s] = v_new
+        delta = max(delta, abs(v_old - v_new))
+    if delta &lt; 1e-6:
+        break
+print("Value function:", V)
+</code></pre>
+
+<h2>2.4 Linear Algebra Essentials</h2>
+<p>
+Linear algebra provides the basic machinery for representing and manipulating
+vectors and matrices. The dot product (or inner product) of two vectors is an
+operation that takes two equal‑length sequences of numbers and returns a single
+scalar. Algebraically, it is the sum of the products of the corresponding
+entries of the two sequences【886134357870404†L220-L229】. Geometrically, it is the product of the
+Euclidean magnitudes of the two vectors and the cosine of the angle between
+them【886134357870404†L220-L229】. For vectors
+<span class="math">\(\mathbf{a} = [a_1, a_2, \dots, a_n]\)</span> and
+<span class="math">\(\mathbf{b} = [b_1, b_2, \dots, b_n]\)</span> in an orthonormal basis, the dot
+product is <span class="math">\(\mathbf{a}\cdot\mathbf{b} = \sum_{i=1}^n a_i b_i\)</span>【886134357870404†L261-L266】.
+If the vectors are represented as column vectors, the dot product can also be
+written as the matrix product <span class="math">\(\mathbf{a}^\top \mathbf{b}\)</span>【886134357870404†L277-L285】.
+</p>
+<p>
+Matrix multiplication generalizes the dot product. Given a matrix <span class="math">\(A\)</span>
+of size <span class="math">\(m\times n\)</span> and a matrix <span class="math">\(B\)</span> of size
+<span class="math">\(n\times p\)</span>, the product <span class="math">\(C = AB\)</span> is an
+<span class="math">\(m\times p\)</span> matrix where each entry is the dot product of a
+row of <span class="math">\(A\)</span> and a column of <span class="math">\(B\)</span>. Matrix multiplication is
+associative but not commutative; for matrices of compatible dimensions,
+<span class="math">\((AB)C = A(BC)\)</span> but generally <span class="math">\(AB \neq BA\)</span>.
+Understanding these operations is essential for implementing value updates,
+function approximators and policy gradients in RL.
+</p>
+<p>
+Below is an example of computing dot products and matrix products using NumPy.
+We define two vectors and two matrices, compute their dot product in three
+different ways, and verify that the result matches the geometric definition.
+We also multiply matrices to illustrate the row–column multiplication rule.
+</p>
+<pre><code>import numpy as np
+
+# vectors
+a = np.array([1, 3, -5])
+b = np.array([4, -2, -1])
+
+# dot product three ways
+dot_sum = sum(x * y for x, y in zip(a, b))  # manual sum of products
+dot_np = np.dot(a, b)                       # numpy dot function
+dot_mat = a.reshape(1, -1) @ b.reshape(-1, 1)  # matrix product yields a 1x1 matrix
+
+print(f"Manual dot: {dot_sum}")
+print(f"np.dot:     {dot_np}")
+print(f"Matrix product: {dot_mat.item()}")
+
+# matrix multiplication
+A = np.array([[1, 2], [3, 4], [5, 6]])  # 3x2
+B = np.array([[7, 8, 9], [10, 11, 12]])  # 2x3
+C = A @ B  # resulting 3x3 matrix
+print("Matrix product:\n", C)
+</code></pre>
+
+<footer>
+Sources: [1] Expected value is defined as a weighted average of possible values of a random
+variable, with weights equal to probabilities【572876517659262†L256-L265】. [2] A Markov chain has the
+memoryless property: the probability of each event depends only on the current
+state【759637766467329†L282-L327】. [3] The Bellman operator is a contraction mapping whose fixed
+point is the value function【587114077902700†L21-L63】. [4] The dot product is the sum of
+products of corresponding entries and equals the product of magnitudes and the
+cosine of the angle between vectors【886134357870404†L220-L229】【886134357870404†L261-L266】【886134357870404†L277-L285】.
+</footer>
+
+</body>
+</html>

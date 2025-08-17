@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 1 – An RL Primer</title>
+    <style>
+        body {
+            background: #fff;
+            color: #222;
+            font-family: "Georgia", "Times New Roman", serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0 1.5rem;
+        }
+        h1, h2, h3 {
+            color: #003366;
+            margin-top: 1.2em;
+        }
+        pre {
+            background: #f8f8f8;
+            border: 1px solid #e0e0e0;
+            padding: 1em;
+            overflow-x: auto;
+        }
+        code {
+            font-family: "Courier New", Courier, monospace;
+            color: #C7254E;
+        }
+        .citation {
+            font-size: 0.85em;
+            vertical-align: super;
+        }
+        footer {
+            margin-top: 3em;
+            border-top: 1px solid #ddd;
+            padding: 1em 0;
+            font-size: 0.8em;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+<h1>Chapter 1 – An RL Primer</h1>
+
+<h2>1.1 Agent–Environment Interface</h2>
+<p>
+Reinforcement learning (RL) is fundamentally about the interaction between an
+<em>agent</em> and its <em>environment</em>. Spinning Up’s introductory guide explains that the agent
+receives an observation of the state of the world and chooses an action; the environment
+responds by transitioning to a new state and emitting a reward signal【409053916883883†L109-L117】. This cycle of
+observe–act–reward–transition is repeated at every time step. In fully observed
+environments the observation provides a complete description of the state; in partially
+observed environments it may only provide partial information【409053916883883†L133-L144】. This formalization
+reflects the agent–environment interface; nothing within the agent’s internal workings is
+known to the environment and vice versa.
+</p>
+<p>
+At a high level, the agent’s policy determines how it selects actions based on its
+observations. Policies can be deterministic or stochastic, mapping observations to
+actions or probability distributions over actions. The environment in turn defines a
+transition function describing how the state evolves given the current state and action.
+Throughout the book we will treat the environment as an opaque system with which the
+agent interacts; the agent must learn to act optimally by trial and error.
+</p>
+<p>
+An important aspect of this interface is the reward signal. The environment provides
+scalar feedback that tells the agent how desirable a particular transition was. This
+reward is not a utility function but a reinforcement signal; the agent’s goal is to
+maximise the accumulated reward over time. Because the agent does not directly control
+the reward, it must explore and exploit the environment to find a policy that yields
+high return. These ideas lay the groundwork for understanding more sophisticated
+algorithms.
+</p>
+
+<h2>1.2 Rewards, Returns and Discounting</h2>
+<p>
+Rewards are the building blocks of the learning signal in RL. At each time step <code>t</code>
+the agent receives a reward <code>R<sub>t+1</sub></code>, which can be positive, negative or zero.
+The goal is to maximise some notion of cumulative reward. One common definition of
+return is the <em>discounted return</em>, which sums all future rewards while decreasing
+their importance exponentially over time. Formally, the discounted return is defined
+as <span class="math">\(G = \sum_{t=0}^{\infty} \gamma^t R_{t+1}\)</span>, where <code>0 ≤ γ &lt; 1</code> is the
+discount factor【262602064263229†L566-L576】. The discount factor <code>γ</code> weights near‑term rewards more
+heavily than long‑term rewards, reflecting a preference for immediate feedback and
+ensuring that the sum converges【262602064263229†L566-L576】.
+</p>
+<p>
+Why discount? First, discounting captures the agent’s inherent time preference: future
+rewards are often considered less valuable because of uncertainty and delayed
+gratification. Second, discounting guarantees that the infinite sum of rewards has a
+finite expectation even in non‑terminal tasks. Without discounting, an agent in a
+continuing environment might accumulate infinite returns and the learning problem
+would be ill‑defined. In episodic tasks the discount factor can be set to 1, but in
+continuing tasks it is common to choose a value like 0.99.
+</p>
+<p>
+The notion of return leads naturally to the concept of value functions, which estimate
+the expected return from states or state–action pairs. We will cover value functions
+in detail in later chapters. For now, it is sufficient to understand that an RL agent
+seeks to maximise the expected discounted return by learning a policy that picks
+actions yielding the greatest cumulative reward.
+</p>
+
+<h2>1.3 Episodic vs Continuing Tasks</h2>
+<p>
+Not all RL tasks are structured the same way. In <em>episodic</em> tasks the agent
+interacts with the environment for a finite number of steps until it reaches a terminal
+state. After termination, the environment resets to an initial state, and the agent
+begins again. Examples include board games like chess or pricing games with a fixed
+horizon. In such tasks the discounted return may simplify to a finite sum over the
+episode length because there are only finitely many rewards.
+</p>
+<p>
+In contrast, <em>continuing</em> tasks never terminate. The environment is always active,
+and the agent continues to receive rewards indefinitely. Examples include controlling
+a manufacturing process or managing a stock portfolio. To ensure that returns are
+well-defined in continuing tasks, we must discount future rewards or define return
+as the average reward per time step. The choice depends on the problem: discounted
+return emphasises near‑term performance, whereas average reward focuses on steady‑state
+performance.
+</p>
+<p>
+It is often useful to convert a continuing task into an episodic one by introducing
+an artificial termination when the agent reaches certain states or after a set number
+of steps. This allows algorithms designed for episodic tasks to be applied.
+Understanding whether a problem is episodic or continuing informs how we choose
+objective functions and design algorithms.
+</p>
+
+<h2>1.4 Exploration–Exploitation Trade‑off</h2>
+<p>
+A central challenge in RL is the <em>exploration–exploitation dilemma</em>. The agent
+must choose between exploiting its current knowledge to gain high immediate reward and
+exploring new actions that may lead to higher long‑term gains. The exploration–
+exploitation dilemma article on decision making states that exploitation involves
+pursuing the best option according to current knowledge, whereas exploration involves
+trying alternatives that might yield better outcomes in the future【899785337361970†L122-L129】. Striking the
+right balance is crucial because too much exploitation can cause the agent to miss
+better strategies, while too much exploration wastes time on suboptimal actions.
+</p>
+<p>
+Practical RL algorithms address this trade‑off through different mechanisms. In value‑
+based methods such as Q‑learning, an ε‑greedy policy explores by taking a random
+action with probability ε and the greedy action otherwise. In policy gradient methods,
+stochastic policies inherently explore because they sample actions from a probability
+distribution. More sophisticated strategies include upper‑confidence bounds (UCB),
+Thompson sampling and intrinsic motivation. The exploration strategies used often
+depend on the problem’s reward structure and the available computational resources.
+</p>
+<p>
+The exploration problem can be particularly challenging in environments with sparse
+or deceptive rewards【899785337361970†L166-L174】. Sparse rewards provide little feedback until the agent
+reaches a goal state, while deceptive rewards lure the agent into local optima. In
+these cases agents may employ intrinsic reward signals that encourage exploring
+novel states or using curiosity‑driven objectives. We will revisit exploration
+techniques when we study bandit problems and intrinsic motivation.
+</p>
+
+<footer>
+    <p><strong>Sources</strong>: RL agent–environment interaction【409053916883883†L109-L117】; discounted return definition【262602064263229†L566-L576】;
+    exploration–exploitation dilemma【899785337361970†L122-L129】 and exploration challenges【899785337361970†L166-L174】.</p>
+</footer>
+
+</body>
+</html>

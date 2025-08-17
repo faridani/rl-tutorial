@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 4 – Python &amp; Tools for RL</title>
+    <style>
+        body {
+            background: #fff;
+            color: #222;
+            font-family: "Georgia", "Times New Roman", serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0 1.5rem;
+        }
+        h1, h2, h3 {
+            color: #003366;
+            margin-top: 1.2em;
+        }
+        pre {
+            background: #f8f8f8;
+            border: 1px solid #e0e0e0;
+            padding: 1em;
+            overflow-x: auto;
+        }
+        code {
+            font-family: "Courier New", Courier, monospace;
+            color: #C7254E;
+        }
+        footer {
+            margin-top: 3em;
+            border-top: 1px solid #ddd;
+            padding: 1em 0;
+            font-size: 0.8em;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Chapter 4 – Python &amp; Tools for RL</h1>
+
+<h2>4.1 NumPy and Vectorization</h2>
+<p>
+Python’s numerical computing ecosystem is built around <code>NumPy</code>, a library
+that provides an efficient multidimensional array object (<code>ndarray</code>) and a
+collection of functions for operating on entire arrays without explicit loops.
+NumPy underpins many higher‑level libraries, including pandas and PyTorch.
+Because operations on <code>ndarray</code> objects are implemented in optimized C
+code, they are usually much faster than performing the same computation in pure
+Python. In fact, vectorized array operations are generally significantly
+faster than their Python equivalents【492411738745479†L1326-L1330】.
+</p>
+<p>
+The term <em>vectorization</em> refers to applying operations to whole arrays of
+data at once rather than looping over individual elements. Wes McKinney’s
+<em>Python for Data Analysis</em> clarifies that in this book “vectorization” means
+operating on whole arrays of data rather than going value by value using a
+Python <code>for</code> loop【492411738745479†L1397-L1399】. Vectorization leverages low‑level
+optimizations and broadcasting rules to express complex operations succinctly
+and efficiently. For example, computing the elementwise square of an array
+<code>a</code> is as simple as <code>a ** 2</code>.
+</p>
+<p>
+Below we compare a scalar loop with a vectorized operation. We generate one
+million random numbers and compute their squares using both approaches. The
+vectorized version uses NumPy’s elementwise multiplication and is many times
+faster than the equivalent loop. This demonstrates why nearly all RL code uses
+NumPy or torch tensors to represent observations, action distributions and
+gradients.
+</p>
+<pre><code>import numpy as np
+import time
+
+n = 1_000_000
+a = np.random.randn(n)
+
+# scalar loop
+start = time.perf_counter()
+squares_loop = np.empty_like(a)
+for i in range(n):
+    squares_loop[i] = a[i] * a[i]
+elapsed_loop = time.perf_counter() - start
+
+# vectorized
+start = time.perf_counter()
+squares_vec = a * a
+elapsed_vec = time.perf_counter() - start
+
+print(f"Loop time: {elapsed_loop:.4f}s")
+print(f"Vectorized time: {elapsed_vec:.4f}s")
+print("Arrays equal:", np.allclose(squares_loop, squares_vec))
+</code></pre>
+
+<h2>4.2 Environment APIs: Gymnasium and PettingZoo</h2>
+<p>
+To benchmark and develop RL algorithms we need standardized interfaces for
+environments. The <em>Gymnasium</em> library provides a base class
+<code>gymnasium.Env</code> that encapsulates an environment with arbitrary dynamics.
+The main API methods are <code>reset()</code> and <code>step()</code>. The method <code>step(action)</code>
+updates the environment with the agent’s action and returns a tuple
+(<code>observation</code>, <code>reward</code>, <code>terminated</code>, <code>truncated</code>, <code>info</code>)【586442005015178†L142-L162】.
+The <code>terminated</code> flag indicates whether a terminal state has been reached,
+while <code>truncated</code> indicates an episode ended due to a time limit or other
+external condition. The <code>reset()</code> method returns an initial observation and
+an info dictionary and must be called before the first <code>step()</code>【586442005015178†L159-L176】.
+</p>
+<p>
+Environments expose additional attributes such as <code>action_space</code> and
+<code>observation_space</code> describing the set of valid actions and observations,
+respectively【586442005015178†L172-L176】. A random number generator can be seeded to make
+episodes reproducible【586442005015178†L185-L197】. Gymnasium focuses on single‑agent settings.
+For multi‑agent RL, the PettingZoo library extends this interface to handle
+multiple agents interacting in the same environment.
+</p>
+<p>
+The following example shows how to use Gymnasium to interact with a simple
+environment such as FrozenLake. We create the environment with
+<code>gymnasium.make()</code>, call <code>reset()</code> to obtain the initial observation, and
+then repeatedly choose actions (here, random actions) and call <code>step()</code> until
+the episode terminates. The variables <code>terminated</code> and <code>truncated</code> tell us
+when to stop.
+</p>
+<pre><code>import gymnasium as gym
+
+env = gym.make("FrozenLake-v1", render_mode=None)
+obs, info = env.reset(seed=42)  # initial observation and info
+done = False
+total_reward = 0.0
+while not done:
+    action = env.action_space.sample()  # random action
+    obs, reward, terminated, truncated, info = env.step(action)
+    total_reward += reward
+    done = terminated or truncated
+print(f"Episode finished with total reward {total_reward}")
+env.close()
+</code></pre>
+
+<h2>4.3 Experiment Tracking and Reproducibility</h2>
+<p>
+Reproducibility is essential for scientific experiments and for comparing RL
+algorithms. Because RL involves randomness in action selection, environment
+dynamics and network initialization, you should seed all sources of randomness.
+In Python, the <code>random</code> module, NumPy’s RNG and frameworks like PyTorch or
+TensorFlow each maintain separate random number generators. Setting seeds for
+each ensures that repeated runs produce the same results (up to nondeterminism
+in parallelism and GPU kernels). Gymnasium environments can also be seeded via
+their <code>reset()</code> method【586442005015178†L185-L197】.
+</p>
+<p>
+Experiment tracking involves recording hyperparameters, metrics and metadata.
+Tools such as TensorBoard, Weights&amp;Biases and MLFlow provide dashboards for
+logging training progress, but a simple logging solution can be implemented
+with Python’s <code>csv</code> or <code>json</code> modules. The following code defines a function
+that seeds the relevant random number generators and runs a simple policy on an
+environment while logging episode rewards to a file.
+</p>
+<pre><code>import csv
+import random
+import numpy as np
+import gymnasium as gym
+
+def run_experiment(env_name, seed, n_episodes=10, log_file="log.csv"):
+    # set seeds
+    random.seed(seed)
+    np.random.seed(seed)
+    env = gym.make(env_name)
+    obs, info = env.reset(seed=seed)
+    with open(log_file, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["episode", "return"])
+        for episode in range(n_episodes):
+            obs, info = env.reset()
+            done = False
+            ep_return = 0.0
+            while not done:
+                action = env.action_space.sample()
+                obs, reward, terminated, truncated, info = env.step(action)
+                ep_return += reward
+                done = terminated or truncated
+            writer.writerow([episode, ep_return])
+    env.close()
+
+run_experiment("FrozenLake-v1", seed=123)
+</code></pre>
+
+<h2>4.4 Testing and Debugging RL</h2>
+<p>
+Implementing RL algorithms can be challenging; subtle bugs in indexing,
+broadcasting or the update rules often lead to silent failures. Testing your
+implementations on small, known problems helps catch errors early. For example,
+you can implement Q‑learning on a simple tabular MDP with a handful of
+states—such as the two‑state chain from Chapter 2—and compare the learned
+values against the analytical solution. Unit tests should check that value and
+policy updates behave as expected for deterministic environments.
+</p>
+<p>
+Assertions and invariants are invaluable during debugging. Check that value
+functions remain bounded, that probabilities sum to one, and that tensor shapes
+match. Logging intermediate quantities like gradients and returns can provide
+insight into diverging training runs. Many deep learning frameworks include
+automatic differentiation; verifying gradients with finite difference
+approximations helps ensure correct implementation of policy gradients and
+losses.
+</p>
+<p>
+Here is a simple sanity check for the Q‑learning update. We create a
+two‑state environment where taking the only action from state 0 leads to
+state 1 with reward 1 and from state 1 leads back to state 0 with reward 0.
+We update Q‑values according to the Q‑learning rule and assert that after
+sufficient iterations the value of state 0 approximates the expected return of
+<span class="math">\(1/(1-\gamma)\)</span> for <span class="math">\(\gamma=0.9\)</span>.
+</p>
+<pre><code>import numpy as np
+
+gamma = 0.9
+alpha = 0.1
+Q = np.zeros((2, 1))  # two states, one action
+
+for episode in range(1000):
+    # from state 0, reward 1 then go to state 1; from state 1, reward 0 then go to state 0
+    s = 0
+    for t in range(10):
+        if s == 0:
+            r, s_next = 1, 1
+        else:
+            r, s_next = 0, 0
+        # Q-learning update
+        Q[s, 0] += alpha * (r + gamma * np.max(Q[s_next]) - Q[s, 0])
+        s = s_next
+
+expected_return = 1 / (1 - gamma)  # 1/(1-0.9) = 10
+assert abs(Q[0, 0] - expected_return) &lt; 1.0, "Q-value deviates from expected return"
+print(f"Q-value for state 0: {Q[0,0]:.2f} (expected ~{expected_return:.2f})")
+</code></pre>
+
+<footer>
+Sources: [1] Vectorized operations on NumPy arrays are usually significantly faster
+than Python loops and are defined as operating on whole arrays rather than
+element by element【492411738745479†L1326-L1330】【492411738745479†L1397-L1399】. [2] Gymnasium’s
+<code>Env</code> class encapsulates an environment and provides <code>reset()</code> and
+<code>step()</code> methods that return observations, rewards, termination flags and
+additional info【586442005015178†L142-L162】【586442005015178†L159-L176】. [3] Environments expose
+<code>action_space</code> and <code>observation_space</code> attributes and can be seeded for
+reproducibility【586442005015178†L172-L176】【586442005015178†L185-L197】.
+</footer>
+
+</body>
+</html>

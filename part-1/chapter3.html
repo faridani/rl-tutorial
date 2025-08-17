@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 3 – Optimization Foundations for RL</title>
+    <style>
+        body {
+            background: #fff;
+            color: #222;
+            font-family: "Georgia", "Times New Roman", serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0 1.5rem;
+        }
+        h1, h2, h3 {
+            color: #003366;
+            margin-top: 1.2em;
+        }
+        pre {
+            background: #f8f8f8;
+            border: 1px solid #e0e0e0;
+            padding: 1em;
+            overflow-x: auto;
+        }
+        code {
+            font-family: "Courier New", Courier, monospace;
+            color: #C7254E;
+        }
+        footer {
+            margin-top: 3em;
+            border-top: 1px solid #ddd;
+            padding: 1em 0;
+            font-size: 0.8em;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Chapter 3 – Optimization Foundations for RL</h1>
+
+<h2>3.1 Gradient Descent and Stochastic Approximation</h2>
+<p>
+Many reinforcement learning algorithms rely on optimization to adjust policy
+parameters or value function approximators. The most fundamental optimizer is
+<em>gradient descent</em>, an iterative method for finding a local minimum of a
+differentiable function. At each iteration the parameters are updated in the
+direction of the negative gradient: if <span class="math">\(\theta_t\)</span> denotes the
+current parameters and <span class="math">\(J(\theta)\)</span> the objective, the update
+rule is <span class="math">\(\theta_{t+1} = \theta_t - \eta\nabla J(\theta_t)\)</span>,
+where <span class="math">\(\eta\)</span> is the learning rate【837491046072274†L246-L277】. Intuitively, one
+imagines the algorithm as rolling downhill along the surface of the cost
+function, with the learning rate controlling the step size.
+</p>
+<p>
+In machine learning we often use <em>stochastic gradient descent</em> (SGD), which
+replaces the exact gradient with an unbiased estimate computed on a minibatch of
+data. For example, when training a value function approximator, we approximate
+the Bellman error using a single sample transition rather than summing over all
+states. SGD introduces noise into the updates but dramatically reduces
+computational cost and can escape shallow local minima. The Robbins–Monro
+stochastic approximation theorem guarantees convergence under suitable
+conditions on the learning rate schedule.
+</p>
+<p>
+The following code demonstrates gradient descent on the simple function
+<span class="math">\(f(x) = x^2\)</span>. We start from an initial point <code>x0 = 5</code>
+and iteratively update <code>x</code> by subtracting the derivative <code>2*x</code> scaled by a
+learning rate. As iterations proceed, the parameter approaches the global
+minimum at zero. Feel free to experiment with different learning rates and
+observe how they affect convergence.
+</p>
+<pre><code>import numpy as np
+
+def gradient_descent(f_grad, x0, eta, n_iter=50):
+    x = x0
+    trajectory = [x]
+    for _ in range(n_iter):
+        grad = f_grad(x)
+        x = x - eta * grad
+        trajectory.append(x)
+    return trajectory
+
+def f_grad(x):
+    return 2 * x  # derivative of f(x) = x^2
+
+trajectory = gradient_descent(f_grad, x0=5.0, eta=0.1, n_iter=20)
+print("Iterates:", trajectory)
+</code></pre>
+
+<h2>3.2 Momentum, RMSProp and Adam</h2>
+<p>
+Standard gradient descent can be slow when the cost surface has narrow,
+elongated valleys. The <em>momentum</em> method introduces an auxiliary variable
+<span class="math">\(v_t\)</span> that accumulates an exponentially decaying moving
+average of past gradients. The update rules are
+<span class="math">\(v_t = \gamma v_{t-1} + \eta \nabla_\theta J(\theta_{t-1})\)</span> and
+<span class="math">\(\theta_t = \theta_{t-1} - v_t\)</span>, where the momentum factor
+<span class="math">\(\gamma\)</span> is typically around 0.9【417571729670082†L262-L276】. Momentum accelerates
+learning in directions of consistent gradient and damps oscillations.
+</p>
+<p>
+Adaptive learning rate methods adjust the step size for each parameter based on
+historical gradient magnitudes. <em>RMSProp</em> maintains an exponentially decaying
+average of squared gradients <span class="math">\(E[g^2]_t\)</span> and divides the
+learning rate by the square root of this average: the update for parameter
+<span class="math">\(\theta\)</span> is
+<span class="math">\(E[g^2]_t = 0.9 E[g^2]_{t-1} + 0.1 g_t^2\)</span> and
+<span class="math">\(\theta_{t+1} = \theta_t - \eta g_t / \sqrt{E[g^2]_t + \varepsilon}\)</span>【417571729670082†L430-L444】.
+This prevents the learning rate from vanishing in shallow directions while
+damping updates in steep directions.
+</p>
+<p>
+<em>Adam</em> combines momentum and RMSProp. It computes exponential moving
+averages of both the gradients and their squares, bias‑corrects them, and uses
+their ratio to update parameters:
+<span class="math">\(\theta_{t+1} = \theta_t - \eta \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \varepsilon}\)</span>,
+where <span class="math">\(m_t\)</span> and <span class="math">\(v_t\)</span> are biased estimates of the
+first and second moments and hats denote bias correction【417571729670082†L448-L477】.
+Adam generally works well out of the box and is widely used in deep RL.
+</p>
+<p>
+The following Python function demonstrates momentum, RMSProp and Adam on a
+simple convex function <span class="math">\(f(x) = x^2\)</span>. We implement each
+optimizer and record the iterates. Observe how momentum accelerates progress
+compared with vanilla gradient descent and how RMSProp and Adam adapt the step
+size dynamically.
+</p>
+<pre><code>import numpy as np
+
+def optimize(function_grad, x0, n_iter=50, method="momentum"):
+    x = x0
+    if method == "momentum":
+        v = 0
+        gamma = 0.9
+        eta = 0.1
+        for _ in range(n_iter):
+            g = function_grad(x)
+            v = gamma * v + eta * g
+            x = x - v
+            yield x
+    elif method == "rmsprop":
+        E_g2 = 0
+        eta = 0.01
+        rho = 0.9
+        eps = 1e-8
+        for _ in range(n_iter):
+            g = function_grad(x)
+            E_g2 = rho * E_g2 + (1 - rho) * (g ** 2)
+            x = x - (eta / np.sqrt(E_g2 + eps)) * g
+            yield x
+    elif method == "adam":
+        m = 0
+        v = 0
+        beta1 = 0.9
+        beta2 = 0.999
+        eta = 0.1
+        eps = 1e-8
+        for t in range(1, n_iter + 1):
+            g = function_grad(x)
+            m = beta1 * m + (1 - beta1) * g
+            v = beta2 * v + (1 - beta2) * (g ** 2)
+            m_hat = m / (1 - beta1 ** t)
+            v_hat = v / (1 - beta2 ** t)
+            x = x - (eta * m_hat) / (np.sqrt(v_hat) + eps)
+            yield x
+
+def grad(x):
+    return 2 * x
+
+print("Momentum:")
+print(list(optimize(grad, 5.0, n_iter=10, method="momentum")))
+print("RMSProp:")
+print(list(optimize(grad, 5.0, n_iter=10, method="rmsprop")))
+print("Adam:")
+print(list(optimize(grad, 5.0, n_iter=10, method="adam")))
+</code></pre>
+
+<h2>3.3 Natural Gradient and Fisher Information</h2>
+<p>
+While ordinary gradient descent measures distances in parameter space using the
+Euclidean norm, this can be suboptimal when the parameters represent
+probability distributions. The <em>natural gradient</em> takes a more principled
+approach by measuring distances in the space of probability distributions using
+the Kullback–Leibler (KL) divergence. The update direction is
+<span class="math">\(\delta^* \propto F^{-1} \nabla_\theta \mathcal{L}(\theta)\)</span>,
+where <span class="math">\(F\)</span> is the Fisher information matrix of the model
+distribution【89349563364104†L246-L253】. Preconditioning the gradient by
+<span class="math">\(F^{-1}\)</span> accounts for the geometry of the distribution
+manifold and can lead to faster convergence.
+</p>
+<p>
+The Fisher information matrix for a parametric distribution
+<span class="math">\(p(x;\theta)\)</span> is defined as
+<span class="math">\(F = \mathrm{E}[\nabla_\theta \log p(X;\theta)
+\nabla_\theta \log p(X;\theta)^{\top}]\)</span>. Intuitively, it measures how
+sensitive the log‑likelihood is to changes in the parameters. In many cases,
+computing and inverting <span class="math">\(F\)</span> exactly is expensive, so
+approximate methods such as the natural policy gradient or trust region policy
+optimization (TRPO) use conjugate gradient solvers or structural assumptions to
+avoid explicit inversion.
+</p>
+<p>
+Here is a toy example demonstrating the natural gradient for a one‑parameter
+family: the normal distribution with mean <span class="math">\(\mu\)</span> and fixed
+variance <span class="math">\(\sigma^2 = 1\)</span>. The log‑likelihood gradient of a
+sample <span class="math">\(x\)</span> with respect to <span class="math">\(\mu\)</span> is
+<span class="math">\(\nabla_\mu \log p(x;\mu) = x - \mu\)</span>, and the Fisher
+information is simply <span class="math">\(F = 1\)</span>. Thus the natural gradient and
+ordinary gradient coincide. We generate samples from a target normal
+distribution and estimate the mean by following the natural gradient update.
+</p>
+<pre><code>import numpy as np
+
+# target normal distribution with mean 3.0 and variance 1
+mu_true = 3.0
+data = np.random.normal(mu_true, 1.0, size=1000)
+
+# initial guess for mu
+mu = 0.0
+eta = 0.1
+for _ in range(50):
+    grad = np.mean(data - mu)  # gradient of log-likelihood wrt mu
+    fisher = 1.0  # Fisher information for mu in N(mu, 1) is 1
+    mu += eta * grad / fisher  # natural gradient update
+print(f"Estimated mean: {mu:.2f}")
+</code></pre>
+
+<h2>3.4 Constrained Optimization and Lagrange Multipliers</h2>
+<p>
+Optimization problems often include constraints. Suppose we wish to maximize
+<span class="math">\(f(x,y)\)</span> subject to <span class="math">\(g(x,y) = k\)</span>. The method of
+Lagrange multipliers provides a powerful technique for such problems. The key
+idea is that at an optimum (assuming differentiability and interior points),
+the gradients of the objective and the constraint are parallel: one must solve
+the system
+<span class="math">\(\nabla f = \lambda\,\nabla g\)</span> together with the constraint
+<span class="math">\(g(x,y) = k\)</span>. Here <span class="math">\(\lambda\)</span> is the Lagrange
+multiplier【801370580572626†L689-L723】. Solving these equations yields candidate
+solutions; one must then determine which of them correspond to maxima or
+minima.
+</p>
+<p>
+As an illustration, consider minimizing <span class="math">\(f(x,y) = x^2 + y^2\)</span>
+subject to the linear constraint <span class="math">\(x + y = 1\)</span>. The gradients
+are <span class="math">\(\nabla f = (2x, 2y)\)</span> and <span class="math">\(\nabla g = (1, 1)\)</span>.
+Setting <span class="math">\(2x = \lambda\)</span> and <span class="math">\(2y = \lambda\)</span> implies
+<span class="math">\(x = y\)</span>. Together with the constraint <span class="math">\(x + y = 1\)</span>,
+we find <span class="math">\(x = y = 0.5\)</span>. Substituting back into the objective
+shows that the minimum value is <span class="math">\(f(0.5, 0.5) = 0.5\)</span>. This is
+the unique minimum because the objective is strictly convex on the constraint
+set.
+</p>
+<p>
+We can verify this result numerically in Python by parameterizing the
+constraint <span class="math">\(y = 1 - x\)</span> and performing a one‑dimensional
+optimization. Although here the solution is obvious, the code demonstrates how
+to evaluate the objective along the constraint and confirms the analytic
+solution.
+</p>
+<pre><code>import numpy as np
+
+# define objective and constraint
+def f(x):
+    y = 1 - x  # constraint y = 1 - x
+    return x**2 + y**2
+
+# brute force search over [0,1]
+x_vals = np.linspace(0, 1, 101)
+f_vals = [f(x) for x in x_vals]
+min_index = np.argmin(f_vals)
+x_star = x_vals[min_index]
+print(f"Minimum occurs at x = {x_star:.2f}, y = {1 - x_star:.2f}")
+print(f"Minimum value: {f_vals[min_index]:.2f}")
+</code></pre>
+
+<footer>
+Sources: [1] Gradient descent updates parameters in the direction of the negative
+gradient with a learning rate【837491046072274†L246-L277】. [2] Momentum adds a fraction
+of the previous update to the current one to accelerate SGD【417571729670082†L262-L276】.
+[3] RMSProp divides the learning rate by an exponentially decaying average of
+squared gradients, and Adam uses moving averages of gradients and squared
+gradients with bias correction【417571729670082†L430-L444】【417571729670082†L448-L477】.
+[4] The natural gradient preconditions the gradient by the inverse of the Fisher
+information matrix【89349563364104†L246-L253】. [5] The method of Lagrange multipliers
+solves constrained optimization by setting ∇f = λ∇g along with the constraint【801370580572626†L689-L723】.
+</footer>
+
+</body>
+</html>
