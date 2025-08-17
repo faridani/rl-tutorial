@@ -166,33 +166,33 @@ The following two lessons should prepare you for almost all of the math that you
 * GRPO (Group Relative Policy Optimization)
 * Safety, Bias & Evaluation
 
-# Part VII — Applications (Beyond Robotics Emphasis)
+# Part VII — Applications (Beyond Robotics Emphasis) 
 
-## Chapter 24. Revenue & Pricing
+## Chapter 24. Revenue & Pricing [visit lesson](part-7/chapter24.html) 
 * Dynamic Pricing as Bandit/MDP
 * Contextual Pricing & Elasticity
 * Auction & Ad Bidding
 * Budget Pacing & Constraints
 
-## Chapter 25. Operations & Supply Chain
+## Chapter 25. Operations & Supply Chain  [visit lesson](part-7/chapter25.html) 
 * Inventory Control
 * Routing & Dispatch
 * Queueing & Service Control
 * Energy & Demand Response
 
-## Chapter 26. Recommendations & Personalization
+## Chapter 26. Recommendations & Personalization  [visit lesson](part-7/chapter26.html) 
 * Slate & Diversified Bandits
 * Long‑Horizon Engagement
 * Counterfactual Evaluation
 * Fairness & Exposure Control
 
-## Chapter 27. Healthcare & Finance
+## Chapter 27. Healthcare & Finance  [visit lesson](part-7/chapter27.html) 
 * Treatment Policy Optimization
 * Off‑Policy Safety
 * Portfolio Management & Execution
 * Risk & Regulation
 
-## Chapter 28. Robotics & Control (Focused Overview)
+## Chapter 28. Robotics & Control (Focused Overview)  [visit lesson](part-7/chapter28.html) 
 * Continuous Control Benchmarks
 * Sim2Real & Domain Randomization
 * Learning from Demonstrations
