@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 20 – Safe &amp; Risk‑Sensitive Reinforcement Learning</title>
+  <style>
+    body { background-color: #ffffff; font-family: "Georgia", serif; margin: 40px; line-height: 1.6; color: #333333; }
+    pre { background: #f4f4f4; padding: 10px; border-left: 4px solid #cccccc; overflow-x: auto; }
+    code { font-family: monospace; }
+    h1, h2, h3 { color: #222222; }
+  </style>
+</head>
+<body>
+  <h1>Chapter 20 – Safe &amp; Risk‑Sensitive Reinforcement Learning</h1>
+  <p>
+    In many practical applications, blindly maximising expected reward can lead to
+    catastrophic outcomes.  A self‑driving car must avoid collisions, a financial
+    trading agent must limit draw‑down risk, and a recommendation system must
+    respect fairness constraints.  <strong>Safe reinforcement learning</strong> formalises these
+    requirements by enforcing constraints on the learning process and on the
+    policies themselves.  <strong>Risk‑sensitive reinforcement learning</strong> extends the
+    classical objective by incorporating measures of uncertainty and variability
+    rather than just the mean return.  In this chapter we introduce constrained
+    MDPs, risk measures and robust objectives, and discuss techniques for safe
+    exploration and adversarial training.
+  </p>
+
+  <h2>20.1 Constrained MDPs &amp; Lagrange methods</h2>
+  <p>
+    A <em>constrained Markov decision process</em> (CMDP) augments the standard MDP with
+    additional cost functions and thresholds.  Formally, a CMDP includes the
+    usual state space \(S\), action space \(A\), transition kernel \(P\) and reward
+    function \(r\), together with one or more <em>constraint costs</em>
+    \(c_1,c_2,\dots,c_K\) and corresponding bounds \(d_1,\dots,d_K\).  The goal
+    is to find a policy that maximises the expected discounted return while
+    ensuring that the discounted sum of each cost remains below its bound.  In
+    other words, the agent must trade off reward against costs such as energy,
+    risk or pollution.  A blog on constrained RL notes that a CMDP is like an
+    MDP with multiple reward functions: one reward defines the objective and the
+    others impose constraints【547108457616765†L36-L48】.
+  </p>
+  <p>
+    Solving a CMDP can be cast as an optimisation problem.  One common
+    approach uses <em>Lagrangian relaxation</em>: introduce multipliers
+    \(\lambda_k \ge 0\) for each constraint and consider the unconstrained
+    objective
+    \[J(\pi,\boldsymbol\lambda) = \mathbb{E}\Big[\sum_{t=0}^{\infty} \gamma^t \big(r(S_t,A_t) - \sum_{k=1}^K \lambda_k c_k(S_t,A_t)\big)\Big] - \sum_{k=1}^K \lambda_k d_k.\]
+    The optimal policy is obtained by maximising this Lagrangian with respect to
+    the policy and minimising with respect to the multipliers.  The safe RL
+    survey notes that Lagrangian relaxation converts the constrained problem
+    into an unconstrained one and that the multipliers penalise constraint
+    violations【137206276675019†L748-L756】.  However, the method is sensitive to the
+    learning rates and initialisation of multipliers【137206276675019†L756-L759】.
+  </p>
+  <p>
+    In practice, one may use <em>primal–dual</em> or <em>actor–critic</em> algorithms to
+    update the policy and the multipliers simultaneously.  The pseudo‑code
+    below shows a simple constrained Q‑learning procedure.  At each step the
+    agent observes state \(s_t\), chooses action \(a_t\), receives reward
+    \(r_t\) and cost \(c_t\), and transitions to \(s_{t+1}\).  The Q‑value
+    update includes a penalty term \(\lambda c_t\) and the multiplier is
+    adjusted by the constraint error.
+  </p>
+  <pre><code>import numpy as np
+
+# Q-learning with a single cost constraint
+Q = np.zeros((num_states, num_actions))
+lambda_mult = 0.1  # Lagrange multiplier
+alpha = 0.1       # learning rate
+beta  = 0.01      # multiplier learning rate
+gamma = 0.95      # discount factor
+
+for episode in range(1000):
+    s = env.reset()
+    done = False
+    while not done:
+        # ε-greedy action selection
+        if np.random.rand() &lt; 0.1:
+            a = np.random.choice(num_actions)
+        else:
+            a = np.argmax(Q[s])
+        s_next, reward, cost, done = env.step(a)
+        # compute constraint-penalised reward
+        penalty = lambda_mult * cost
+        td_target = reward - penalty + gamma * np.max(Q[s_next])
+        td_error  = td_target - Q[s, a]
+        Q[s, a] += alpha * td_error
+        # update Lagrange multiplier
+        lambda_mult = max(0, lambda_mult + beta * (cost - d))
+        s = s_next
+  </code></pre>
+  <p>
+    The multiplier update enforces the constraint by increasing \(\lambda\)
+    whenever the observed cost exceeds the desired threshold \(d\).  Such
+    constrained algorithms are essential in domains like pricing where budget
+    or regulatory limits must never be exceeded.
+  </p>
+
+  <h2>20.2 Risk measures &amp; risk‑aware objectives</h2>
+  <p>
+    Even when constraints are respected, focusing solely on the expected return
+    can ignore uncertainty.  In many domains, the cost of rare but catastrophic
+    events may far outweigh average performance.  A Medium article on risk‑aware
+    reinforcement learning explains that risk arises from three sources: <em>parameter
+    uncertainty</em> (uncertainty in the model’s transition probabilities),
+    <em>reward uncertainty</em> (stochasticity in the reward signal) and <em>model
+    uncertainty</em> (mismatch between the learned model and reality)【11258737881815†L79-L90】.
+    These uncertainties imply that an agent should optimise not just the mean
+    return but also higher moments or worst‑case outcomes.
+  </p>
+  <p>
+    Several risk measures have been adopted from finance and statistics.  The
+    <strong>mean–variance</strong> objective penalises variability by maximising
+    \(J(\pi) - c\,\mathrm{Var}_\pi(R)\), where \(J(\pi)\) is the expected
+    return and \(c&gt;0\) controls the trade‑off【11258737881815†L104-L115】.  This criterion
+    encourages policies with more predictable returns.  The <strong>Sharpe ratio</strong>
+    measures reward per unit standard deviation; one maximises
+    \(\mathrm{SR}(\pi) = J(\pi)/\sqrt{\mathrm{Var}_\pi(R)}\)【11258737881815†L116-L127】.
+    Finally, the <strong>conditional value at risk</strong> (CVaR) focuses on the tail
+    distribution.  For a confidence level \(\alpha\), CVaR quantifies the
+    expected return in the worst \(\alpha\%\) of outcomes【11258737881815†L129-L134】.  These
+    risk measures can be optimised directly or incorporated as regularisers in
+    policy gradient methods.
+  </p>
+  <p>
+    Risk‑aware optimisation often involves estimating the distribution of returns.
+    For instance, to compute CVaR empirically, one can collect a set of returns
+    \(\{R_i\}_{i=1}^N\), sort them and average the lowest \(\alpha N\) values.  The
+    Python function below demonstrates how to compute the CVaR of a list of
+    returns and how to use it as an objective when selecting pricing strategies.
+  </p>
+  <pre><code>import numpy as np
+
+def cvar(returns, alpha=0.1):
+    """Compute the Conditional Value at Risk at level alpha."""
+    sorted_returns = np.sort(returns)
+    cutoff = int(np.floor(alpha * len(sorted_returns)))
+    return np.mean(sorted_returns[:cutoff])
+
+# example returns from a pricing policy
+returns = np.random.normal(loc=1.0, scale=0.5, size=100)
+print("CVaR at 10%:", cvar(returns, alpha=0.1))
+  </code></pre>
+  <p>
+    In risk‑aware reinforcement learning, one might update the policy to maximise
+    a weighted combination of expected return and negative CVaR, thus
+    discouraging policies that expose the agent to catastrophic losses.
+  </p>
+
+  <h2>20.3 Robust MDPs &amp; adversarial training</h2>
+  <p>
+    Another approach to managing uncertainty is to plan for the worst case.
+    <strong>Robust reinforcement learning</strong> aims to find a policy that maximises the
+    minimum expected return over a set of possible models.  The safe RL review
+    notes that the robust RL criterion seeks to <em>maximise the reward in the
+    worst case</em>【137206276675019†L699-L703】.  Approaches include <em>adversarial
+    training</em>, where an adversary perturbs the environment to minimise the
+    agent’s return and both the agent and adversary are trained in tandem, and
+    <em>domain randomisation</em>, where the agent is trained in randomly perturbed
+    environments to enhance generalisation【137206276675019†L699-L723】.  A third
+    class of methods uses statistical risk measures such as CVaR to hedge
+    against tail risks【137206276675019†L727-L734】.
+  </p>
+  <p>
+    In adversarial training, the environment is modelled as a two‑player game.
+    The adversary selects disturbances or parameters that reduce the agent’s
+    reward, while the agent learns a policy that performs well against these
+    adversarial perturbations.  The players update their strategies iteratively,
+    similar to minimax optimisation【137206276675019†L707-L716】.  Domain
+    randomisation, by contrast, samples environment parameters from a broad
+    distribution at training time.  The agent learns to cope with these
+    variations and thereby becomes robust to parameter uncertainties and model
+    mismatch【137206276675019†L720-L723】.
+  </p>
+  <p>
+    To illustrate robust training, consider a pricing agent whose demand model
+    depends on unknown elasticity.  We can simulate adversarial perturbations by
+    allowing an opponent to change the elasticity within a bounded range.  The
+    code below sketches a two‑player training loop where the agent chooses a
+    price and the adversary chooses an elasticity.  The agent updates its value
+    estimates based on the resulting revenue, while the adversary updates its
+    strategy to minimise the agent’s revenue.
+  </p>
+  <pre><code>import numpy as np
+
+# Simple adversarial pricing simulation
+price_values = np.linspace(1.0, 5.0, 10)
+elasticity_values = np.linspace(-1.5, -0.5, 10)
+Q = np.zeros((len(price_values), len(elasticity_values)))
+
+for episode in range(200):
+    # agent selects price
+    price_idx = np.argmax(Q.sum(axis=1))  # best average so far
+    # adversary selects elasticity to minimise revenue
+    elasticity_idx = np.argmin(Q[price_idx])
+    price = price_values[price_idx]
+    elasticity = elasticity_values[elasticity_idx]
+    # simulate demand and revenue
+    demand = max(0, 10 * price ** elasticity + np.random.randn())
+    revenue = price * demand
+    # update Q
+    Q[price_idx, elasticity_idx] = 0.9 * Q[price_idx, elasticity_idx] + 0.1 * revenue
+  </code></pre>
+  <p>
+    After training, the agent selects prices that perform reasonably well even at
+    the worst elasticity in the training range.  This simple example shows how
+    adversarial training encourages conservative decisions that hedge against
+    unfavourable conditions.
+  </p>
+
+  <h2>20.4 Shielding &amp; safe exploration</h2>
+  <p>
+    Traditional exploration strategies such as ε‑greedy may cause agents to
+    execute unsafe actions during learning.  The safe RL survey observes that
+    exploration policies must balance the need to gather informative data with
+    the need to avoid catastrophic outcomes【137206276675019†L793-L801】.  Simply
+    adding random noise can produce unsafe behaviour; therefore, specialised
+    techniques are required.
+  </p>
+  <p>
+    One class of approaches adds a <em>shield</em> that intercepts unsafe actions.  For
+    example, Moldovan and Abbeel define an action as safe if it preserves
+    <em>ergodicity</em>: after taking the action it is still possible to reach every
+    other state【137206276675019†L823-L826】.  If a proposed action would lead the
+    agent into an irreversible or high‑risk region, the shield replaces it with a
+    safer alternative.  Another line of work uses model‑based predictors, such
+    as Gaussian processes, to estimate the safety of candidate actions and avoid
+    those with high predicted risk【137206276675019†L812-L817】.
+  </p>
+  <p>
+    A practical safe exploration method for discrete systems is to maintain a
+    set of allowable states and actions.  At each step, the agent checks
+    whether the chosen action would leave the safe set; if so, it either
+    modifies the action or falls back to a conservative policy.  The code below
+    shows a simple grid‑world example where the agent must collect rewards
+    while avoiding “lava” states.  The shield prevents the agent from stepping
+    onto lava during exploration.
+  </p>
+  <pre><code>import numpy as np
+
+safe_states = {(i,j) for i in range(5) for j in range(5)} - {(2,2), (3,3)}  # lava at (2,2) and (3,3)
+safe_actions = {'up': (-1,0), 'down': (1,0), 'left': (0,-1), 'right': (0,1)}
+
+def step(state, action):
+    di, dj = safe_actions[action]
+    next_state = (state[0] + di, state[1] + dj)
+    if next_state not in safe_states:
+        return state, -1.0  # penalise unsafe move and stay
+    reward = 1.0 if next_state == (4,4) else -0.1
+    return next_state, reward
+
+state = (0,0)
+for t in range(20):
+    # greedy with random exploration
+    action = np.random.choice(list(safe_actions.keys()))
+    # shield: avoid unsafe transitions
+    next_state, reward = step(state, action)
+    state = next_state
+  </code></pre>
+  <p>
+    The shield ensures that exploration respects safety constraints, allowing
+    learning to progress without catastrophic failures.  In continuous control
+    settings, safe exploration can be achieved by restricting the action set or
+    by learning a Lyapunov function that certifies safety.
+  </p>
+
+  <h2>20.5 Summary</h2>
+  <p>
+    Safe and risk‑sensitive reinforcement learning extends the standard framework
+    with constraints, uncertainty measures and robustness.  Constrained MDPs use
+    Lagrange multipliers or penalty methods to enforce cost limits.  Risk‑aware
+    objectives incorporate variance, Sharpe ratio and CVaR to temper variability
+    and tail risk.  Robust RL maximises worst‑case performance via adversarial
+    training, domain randomisation or statistical risk measures.  Finally,
+    shielding and safe exploration methods prevent agents from violating safety
+    constraints during learning.  Together these tools provide a foundation for
+    deploying RL in high‑stakes domains where safety and reliability are
+    paramount.
+  </p>
+
+  <h2>Sources</h2>
+  <p>
+    Constrained MDPs treat additional cost functions as constraints and can be
+    solved using Lagrangian relaxation and multipliers【547108457616765†L36-L48】
+    【137206276675019†L748-L756】.  Risk in reinforcement learning arises from
+    parameter, reward and model uncertainty【11258737881815†L79-L90】.  Risk
+    measures such as mean–variance, Sharpe ratio and conditional value at risk
+    provide quantitative objectives for risk‑aware optimisation【11258737881815†L104-L115】【11258737881815†L116-L134】.
+    Robust RL maximises the reward in the worst case via adversarial training,
+    domain randomisation and statistical measures【137206276675019†L699-L734】.
+    Safe exploration strategies maintain constraints during data collection and
+    may rely on ergodicity conditions or uncertainty models【137206276675019†L793-L817】.
+  </p>
+</body>
+</html>

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 18 – Hierarchical &amp; Goal‑Conditioned Reinforcement Learning</title>
+  <style>
+    body { background-color: #ffffff; font-family: "Georgia", serif; margin: 40px; line-height: 1.6; color: #333333; }
+    pre { background: #f4f4f4; padding: 10px; border-left: 4px solid #cccccc; overflow-x: auto; }
+    code { font-family: monospace; }
+    h1, h2, h3 { color: #222222; }
+  </style>
+</head>
+<body>
+  <h1>Chapter 18 – Hierarchical &amp; Goal‑Conditioned Reinforcement Learning</h1>
+  <p>
+    Many decision‑making problems can be decomposed into simpler subproblems.  Hierarchical
+    reinforcement learning (HRL) introduces structure into the learning process by organising
+    policies at multiple temporal scales.  High‑level policies set subgoals or select options that
+    persist for several steps, while low‑level policies execute primitive actions to achieve these
+    subgoals.  Goal‑conditioned RL further generalises this idea by conditioning the policy or
+    value function on a desired goal, allowing the agent to generalise across a family of tasks.
+    This chapter describes the options framework, subgoal discovery, goal‑conditioned policies and
+    practical techniques for hierarchical RL.
+  </p>
+
+  <h2>18.1 Options and skills</h2>
+  <p>
+    The <em>options framework</em> formalises the notion of temporally extended actions.  According to
+    the framework, a Markov option is a triple \(o = \langle I_o, \pi_o, \beta_o \rangle\) where
+    \(I_o\) is the set of states in which the option may be initiated, \(\pi_o\) is the option’s
+    internal policy and \(\beta_o\) is the termination condition【411389272106866†L299-L307】.  When an
+    option is invoked, the agent follows \(\pi_o\) until it terminates according to \(\beta_o\), at
+    which point control returns to the higher‑level policy.  The overall policy thus consists of
+    two levels: a top‑level policy selects among options, and each option in turn selects
+    primitive actions until termination【411389272106866†L326-L335】.  Options can represent skills
+    such as “navigate to the doorway” or “offer a discount” that abstract away low‑level details.
+  </p>
+  <p>
+    Options accelerate learning because they enable the agent to reason at a higher level of
+    abstraction, reducing the effective horizon and focusing exploration on meaningful behaviours.
+    In pricing, an option might correspond to a seasonal strategy, such as “promote during
+    holidays” or “stabilise price at baseline levels.”  The initiation set \(I_o\) defines the
+    states where the strategy is applicable, and the termination condition \(\beta_o\) determines
+    when to switch back to the top‑level policy.  By composing options, the agent can build
+    complex behaviours from simpler skills and adapt to changing market conditions more rapidly.
+  </p>
+  <p>
+    Despite their benefits, options introduce additional complexity.  Designing appropriate
+    initiation sets and termination functions often requires domain knowledge, and learning options
+    jointly with the policy remains an open research problem.  Recent methods such as the
+    option‑critic architecture learn options end‑to‑end using policy gradient techniques, but they
+    may suffer from instability and sensitivity to hyperparameters.  Nevertheless, the options
+    framework provides a powerful foundation for hierarchical RL and is widely used in robotics
+    and other domains.
+  </p>
+  <h3>Python example – hierarchical policy with options</h3>
+  <p>
+    The following toy example implements a simple two‑level controller for a 1‑D pricing
+    environment.  The high‑level policy selects between two options: “aggressive discounting” and
+    “steady pricing.”  Each option has its own low‑level policy that outputs price adjustments.
+    The high‑level option persists for several time steps until a termination condition is met.
+  </p>
+  <pre><code class="language-python">import random
+
+class HighLevelPolicy:
+    def __init__(self):
+        self.current_option = None
+        self.duration = 0
+
+    def choose_option(self, state):
+        # simple heuristic: if demand is low, select aggressive discounting
+        if state['demand'] < 0.5:
+            return 'discount'
+        else:
+            return 'steady'
+
+    def act(self, state):
+        # if no current option or duration expired, choose a new option
+        if self.current_option is None or self.duration == 0:
+            self.current_option = self.choose_option(state)
+            self.duration = random.randint(3, 5)  # option lasts for several steps
+        self.duration -= 1
+        return self.current_option
+
+class LowLevelPolicies:
+    def __init__(self):
+        self.policies = {
+            'discount': lambda state: -0.1,  # decrease price
+            'steady': lambda state: 0.0      # keep price constant
+        }
+    def act(self, option, state):
+        return self.policies[option](state)
+
+def simulate_episode(initial_price=1.0):
+    state = {'price': initial_price, 'demand': random.random()}
+    high_policy = HighLevelPolicy()
+    low_policies = LowLevelPolicies()
+    for t in range(10):
+        option = high_policy.act(state)
+        adjustment = low_policies.act(option, state)
+        state['price'] += adjustment
+        # update demand (toy dynamics)
+        state['demand'] = max(0.0, min(1.0, state['demand'] + 0.2 * (1 - state['price'])))
+        print(f"t={t}, option={option}, price={state['price']:.2f}, demand={state['demand']:.2f}")
+  </code></pre>
+
+  <h2>18.2 Subgoal discovery</h2>
+  <p>
+    Defining useful subgoals manually is time‑consuming and limits the generality of hierarchical
+    agents.  Subgoal discovery seeks to automatically identify intermediate states that divide
+    complex tasks into simpler segments.  In navigation tasks, bottleneck states such as doorways
+    naturally serve as subgoals.  In pricing, subgoals might correspond to hitting inventory
+    thresholds or market share targets.  Various heuristics can be used for discovery, including
+    state visitation counts (rarely visited states are promising subgoals) and graph‑theoretic
+    measures such as betweenness centrality.
+  </p>
+  <p>
+    Unsupervised approaches identify subgoals by maximising diversity or intrinsic motivation.
+    For example, agents can be rewarded for reaching states with high novelty or high prediction
+    error, encouraging exploration of the state space.  Another approach clusters trajectories
+    into regions of similar dynamics and selects cluster boundaries as subgoals.  Once subgoals
+    are discovered, low‑level policies can be trained to reach them and high‑level policies can
+    sequence them to accomplish tasks.
+  </p>
+  <p>
+    The following pseudocode illustrates a simple subgoal discovery using visitation counts.  The
+    algorithm counts how often each state is visited during exploration.  States with visitation
+    below a threshold are considered potential subgoals.  Such a procedure can be applied to a
+    pricing simulator by tracking rare combinations of price and demand and learning option
+    policies to reach those states.
+  </p>
+  <pre><code class="language-python">from collections import defaultdict
+
+def discover_subgoals(trajectories, threshold=0.05):
+    """Identify rarely visited states as subgoals."""
+    counts = defaultdict(int)
+    total = 0
+    for traj in trajectories:
+        for state in traj:
+            counts[state] += 1
+            total += 1
+    subgoals = [s for s, c in counts.items() if c / total < threshold]
+    return subgoals
+
+# Example usage with discrete state ids
+trajectories = [[1,2,3,2,1], [1,4,2,4,1], [1,2,5,2,1]]
+subgoals = discover_subgoals(trajectories, threshold=0.1)
+print("Discovered subgoals:", subgoals)
+  </code></pre>
+
+  <h2>18.3 Goal‑conditioned policies</h2>
+  <p>
+    In goal‑conditioned reinforcement learning the policy or value function depends explicitly on
+    a goal variable \(g\).  The agent learns a universal value function approximator (UVFA)
+    \(V(s,g)\) or \(Q(s,a,g)\) that predicts the expected return when pursuing goal \(g\).  This
+    formulation enables <em>zero‑shot generalisation</em> to unseen goals because the function
+    approximator can interpolate between previously learned goals.  For instance, a pricing
+    controller may be conditioned on a target inventory level and learn to adjust prices so as
+    to reach that inventory in minimal time.
+  </p>
+  <p>
+    Hindsight Experience Replay (HER) is a technique that improves learning in goal‑conditioned
+    settings with sparse rewards.  When an episode fails to achieve its original goal, the agent
+    relabels the achieved final state as the goal and stores the transition with this
+    alternative goal.  By learning from what it <em>did</em> accomplish, the agent receives a
+    denser reward signal and gradually learns how to reach arbitrary goals.  HER has proved
+    effective in robotic manipulation and navigation, and it can be adapted to pricing tasks by
+    relabelling trajectories with the achieved inventory or profit goals.
+  </p>
+  <p>
+    The code below sketches a goal‑conditioned Q‑learning update.  Each transition includes
+    the goal \(g\), and the TD target uses the successor goal.  In practice one would also
+    implement HER by relabelling some transitions with alternative goals.  This example uses a
+    simple deterministic environment where the goal is to reach a specified state.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+def goal_q_update(Q, s, a, r, s_next, g, alpha=0.1, gamma=0.99):
+    """Q-learning update for goal-conditioned Q(s,a,g)."""
+    max_next = np.max([Q.get((s_next, a2, g), 0.0) for a2 in actions])
+    Q[(s,a,g)] = Q.get((s,a,g), 0.0) + alpha * (r + gamma * max_next - Q.get((s,a,g), 0.0))
+
+# Example states and actions
+actions = [0, 1]  # e.g., decrease or increase price
+Q = {}
+state = 0
+goal = 5
+for step in range(10):
+    action = np.random.choice(actions)
+    next_state = state + (1 if action == 1 else -1)
+    reward = 1.0 if next_state == goal else -0.1
+    goal_q_update(Q, state, action, reward, next_state, goal)
+    state = next_state
+  </code></pre>
+
+  <h2>18.4 Summary and challenges</h2>
+  <p>
+    Hierarchical and goal‑conditioned approaches can dramatically improve learning efficiency by
+    introducing structure and transferability.  However, they present several challenges.  First,
+    learning options or subpolicies from scratch remains difficult; algorithms like the
+    option‑critic architecture often require careful tuning and still struggle to scale to
+    high‑dimensional tasks.  Second, subgoal discovery may produce subgoals that are irrelevant
+    or redundant, leading to wasted effort.  Third, training goal‑conditioned policies with
+    sparse rewards demands techniques such as hindsight relabelling to provide sufficient
+    learning signal.
+  </p>
+  <p>
+    Despite these difficulties, hierarchical RL continues to be an active research area with
+    promising applications in robotics, operations management and beyond.  For practitioners, even
+    simple hierarchies (e.g., two‑level controllers) can yield significant gains in sample
+    efficiency and interpretability.  In pricing and decision‑making domains, high‑level
+    strategies such as “promote,” “stabilise” or “liquidate inventory” can guide low‑level price
+    adjustments, providing a natural form of abstraction and control.
+  </p>
+
+  <h2>Sources</h2>
+  <p>
+    The options framework is defined by specifying an initiation set, internal policy and
+    termination condition【411389272106866†L299-L307】.  A policy over options invokes options at the
+    top level, while each option runs its low‑level policy until termination【411389272106866†L326-L335】.
+    These definitions form the basis of hierarchical reinforcement learning discussed in this
+    chapter.
+  </p>
+</body>
+</html>

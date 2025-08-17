@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 21 – Multi‑Agent Reinforcement Learning</title>
+  <style>
+    body { background-color: #ffffff; font-family: "Georgia", serif; margin: 40px; line-height: 1.6; color: #333333; }
+    pre { background: #f4f4f4; padding: 10px; border-left: 4px solid #cccccc; overflow-x: auto; }
+    code { font-family: monospace; }
+    h1, h2, h3 { color: #222222; }
+  </style>
+</head>
+<body>
+  <h1>Chapter 21 – Multi‑Agent Reinforcement Learning</h1>
+  <p>
+    Many real‑world scenarios involve multiple decision makers interacting in a
+    shared environment.  Examples include traffic networks, financial markets,
+    multi‑robot teams and electronic auctions.  In these settings, each agent
+    seeks to maximise its own objective, but its outcomes depend on the actions
+    of others.  <strong>Multi‑agent reinforcement learning</strong> (MARL) extends the
+    single‑agent RL framework to systems with multiple learning agents.  This
+    chapter introduces the formalism of Markov games, discusses training
+    paradigms such as centralised training with decentralised execution, and
+    explores cooperation, competition and game‑theoretic concepts.
+  </p>
+
+  <h2>21.1 Markov games and categories</h2>
+  <p>
+    Multi‑agent RL studies the behaviour of several learning agents that
+    coexist in a shared environment.  Each agent is motivated by its own
+    rewards and takes actions to advance its interests; in some environments
+    these interests conflict, leading to complex group dynamics【104463272107487†L50-L55】.  To
+    model such interactions, MARL uses the formalism of a <em>Markov game</em>, a
+    generalisation of a Markov decision process to multiple agents.  A Markov
+    game is defined by a tuple \((N,S,A,P,R,\gamma)\) consisting of the number of
+    agents \(N\), a state space \(S\), a joint action space \(A = A_1 \times\dots\times A_N\),
+    a transition function \(P(s'|s,a)\), reward functions \(R = (R_1,\dots,R_N)\)
+    for each agent and a discount factor \(\gamma\)【104463272107487†L115-L123】.  Each agent
+    observes the state and chooses an action; the next state and the agents’
+    rewards depend on the joint action.
+  </p>
+  <p>
+    MARL problems can be categorised according to the agents’ objectives.  In
+    <strong>cooperative</strong> settings, agents share a common reward and must work
+    together to achieve a collective goal【104463272107487†L124-L129】.  In
+    <strong>competitive</strong> settings, agents have opposing objectives; one agent’s gain
+    is another’s loss, as in zero‑sum games such as chess【104463272107487†L132-L135】.
+    Between these extremes lie <strong>mixed‑interest</strong> scenarios in which agents
+    have partially aligned and partially conflicting goals【104463272107487†L137-L139】.
+    The type of interaction greatly influences the choice of algorithms and the
+    difficulty of learning.
+  </p>
+  <p>
+    Learning in multi‑agent systems introduces challenges absent in the
+    single‑agent case.  The presence of other learners makes the environment
+    non‑stationary: as each agent updates its policy, the transition dynamics
+    perceived by the others change, violating the Markov property【104463272107487†L149-L155】.
+    Partial observability is common because agents often cannot observe one
+    another’s actions or internal states【104463272107487†L160-L166】.  The joint action
+    space grows exponentially with the number of agents, leading to severe
+    scalability issues【104463272107487†L168-L173】.  Lastly, assigning credit to
+    individual agents for a shared outcome is difficult【104463272107487†L177-L182】.
+    The next sections discuss algorithmic solutions that attempt to mitigate
+    these problems.
+  </p>
+
+  <h2>21.2 Centralised training and decentralised execution</h2>
+  <p>
+    A popular paradigm for cooperative multi‑agent learning is
+    <strong>centralised training with decentralised execution</strong> (CTDE).  During
+    training, agents have access to global information and may share gradients
+    through a centralised critic, but at test time each agent acts based only on
+    its local observation.  The MARL article notes that CTDE allows agents to
+    leverage global information during learning and then operate independently
+    during execution【104463272107487†L203-L205】.  This framework enables scalable learning
+    while preserving decentralisation in deployment.
+  </p>
+  <p>
+    In value‑based CTDE, agents learn a joint action‑value function
+    \(Q(s,a_1,\dots,a_N)\) and a centralised critic provides gradients for
+    updating local policies.  <em>Value decomposition networks</em> (VDN) and
+    <em>QMIX</em> factorise the joint Q‑value into per‑agent utilities, enabling
+    decentralised policies to be derived from a global critic.  Alternatively,
+    actor–critic methods such as MADDPG maintain a centralised critic that
+    conditions on all agents’ actions, while each agent has its own actor
+    network.  These architectures are particularly useful for cooperative
+    problems such as coordinated pricing or inventory replenishment, where
+    agents must learn to act in concert.
+  </p>
+  <p>
+    The code below demonstrates a simplified CTDE scheme for two pricing agents.
+    A central critic estimates the joint Q‑value using both prices, but each
+    agent observes only its own price and a shared state.  The agents update
+    their local policies using gradients from the critic, while the critic
+    updates its estimate based on joint rewards.
+  </p>
+  <pre><code>import numpy as np
+
+# joint Q-table for two agents
+Q = np.zeros((num_states, num_actions, num_actions))
+alpha = 0.1
+gamma = 0.9
+
+for episode in range(500):
+    s = env.reset()
+    done = False
+    while not done:
+        # each agent selects a price (local policy could be ε-greedy)
+        a1 = np.argmax(Q[s].sum(axis=1))  # agent 1 best response
+        a2 = np.argmax(Q[s].sum(axis=0))  # agent 2 best response
+        s_next, (r1, r2), done = env.step((a1, a2))
+        # update centralised critic using joint reward
+        joint_reward = r1 + r2
+        td_target = joint_reward + gamma * np.max(Q[s_next])
+        td_error = td_target - Q[s, a1, a2]
+        Q[s, a1, a2] += alpha * td_error
+        s = s_next
+  </code></pre>
+  <p>
+    This simple example shows how a centralised critic can coordinate agents to
+    achieve a global objective while leaving the execution policy decentralised.
+    In practice, CTDE architectures use neural networks instead of tables and
+    incorporate techniques such as experience replay and target networks.
+  </p>
+
+  <h2>21.3 Cooperation, competition and opponent modelling</h2>
+  <p>
+    MARL algorithms must account for the nature of agent interactions.  In
+    cooperative settings, agents seek to maximise a shared reward.  Algorithms
+    such as independent Q‑learning treat other agents as part of the environment
+    and learn individual value functions, but may suffer from non‑stationarity.
+    In contrast, centralised critics or value factorisation methods address
+    coordination by explicitly modelling joint actions.
+  </p>
+  <p>
+    In competitive or mixed‑interest settings, agents must reason about
+    opponents.  <strong>Self‑play</strong> is a simple yet powerful approach: agents train
+    against copies of themselves or against past versions, as in AlphaGo.  To
+    anticipate non‑stationary opponents, one can model the opponent’s policy
+    explicitly and adapt one’s own policy accordingly.  Opponent modelling can
+    involve estimating the opponent’s preferences or using a prediction network
+    to forecast their next action.  By iteratively updating this model, an agent
+    can respond to changing behaviour.
+  </p>
+  <p>
+    To illustrate opponent modelling, consider a repeated pricing game between
+    two firms.  Each firm sets a price; lower prices increase market share but
+    reduce margin.  We implement simple independent Q‑learning for each agent,
+    augmented with an estimate of the opponent’s probability of choosing each
+    price.  The agents update their Q‑values and opponent model simultaneously
+    to adapt to one another’s strategies.
+  </p>
+  <pre><code>import numpy as np
+
+num_actions = 3  # low, medium, high price
+Q1 = np.zeros((num_states, num_actions))
+Q2 = np.zeros((num_states, num_actions))
+opp_model1 = np.ones(num_actions) / num_actions  # agent 1's belief about agent 2
+opp_model2 = np.ones(num_actions) / num_actions  # agent 2's belief about agent 1
+
+for episode in range(500):
+    s = env.reset()
+    done = False
+    while not done:
+        # each agent samples opponent's action from its model
+        a2_sample = np.random.choice(num_actions, p=opp_model1)
+        a1_sample = np.random.choice(num_actions, p=opp_model2)
+        # ε-greedy best response to sampled opponent action
+        if np.random.rand() &lt; 0.1:
+            a1 = np.random.choice(num_actions)
+        else:
+            a1 = np.argmax(Q1[s])
+        if np.random.rand() &lt; 0.1:
+            a2 = np.random.choice(num_actions)
+        else:
+            a2 = np.argmax(Q2[s])
+        # environment step returns state and individual rewards
+        s_next, (r1, r2), done = env.step((a1, a2))
+        # Q-learning updates
+        Q1[s, a1] += 0.1 * (r1 + 0.9 * np.max(Q1[s_next]) - Q1[s, a1])
+        Q2[s, a2] += 0.1 * (r2 + 0.9 * np.max(Q2[s_next]) - Q2[s, a2])
+        # update opponent models using fictitious play (count frequencies)
+        opp_model1 = 0.99 * opp_model1
+        opp_model1[a2] += 0.01
+        opp_model1 /= opp_model1.sum()
+        opp_model2 = 0.99 * opp_model2
+        opp_model2[a1] += 0.01
+        opp_model2 /= opp_model2.sum()
+        s = s_next
+  </code></pre>
+  <p>
+    Over time, each agent learns a pricing strategy that best responds to its
+    opponent’s observed distribution.  Such simple opponent models can improve
+    convergence and stability in competitive environments compared with naïvely
+    treating the opponent as part of the environment.
+  </p>
+
+  <h2>21.4 Equilibria and learning dynamics</h2>
+  <p>
+    Game theory provides a vocabulary for reasoning about the outcomes of
+    multi‑agent interactions.  A <strong>Nash equilibrium</strong> is a profile of
+    strategies in which no agent can improve its payoff by unilaterally
+    deviating.  In matrix games such as the prisoner’s dilemma or matching
+    pennies, Nash equilibria can be computed analytically.  In more complex
+    environments, agents may learn equilibria through repeated play.  MARL
+    algorithms can be viewed as adaptive processes that seek equilibria in
+    stochastic games.
+  </p>
+  <p>
+    One way to study learning dynamics is through <em>replicator equations</em>, which
+    describe how the proportion of strategies in a population evolves over time.
+    For a two‑strategy game with payoffs \(u_1\) and \(u_2\), the replicator
+    dynamic updates the probability \(p\) of playing the first strategy as
+    \(p_{t+1} = p_t + \alpha p_t (u_1 - \bar{u})\), where \(\bar{u}\) is the
+    average payoff.  The population converges to an equilibrium when payoffs are
+    balanced.  Although MARL agents typically update parameters using gradient
+    descent or Q‑learning rather than replicator dynamics, the analogy helps
+    understand oscillations and cycling in competitive games.
+  </p>
+  <p>
+    The following Python snippet simulates replicator dynamics for the
+    rock–paper–scissors game.  Each strategy’s probability is updated based on
+    its expected payoff against the current mixed strategy.  Over many
+    iterations the distribution oscillates around the uniform distribution, the
+    Nash equilibrium of the game.
+  </p>
+  <pre><code>import numpy as np
+
+payoff_matrix = np.array([[0, -1, 1], [1, 0, -1], [-1, 1, 0]])
+mix = np.array([1/3, 1/3, 1/3])  # initial mixed strategy
+alpha = 0.1
+
+for t in range(200):
+    # expected payoffs for each pure strategy
+    u = payoff_matrix.dot(mix)
+    avg_u = np.dot(mix, u)
+    # replicator update
+    mix += alpha * mix * (u - avg_u)
+    mix = np.clip(mix, 0, None)
+    mix /= mix.sum()
+  </code></pre>
+  <p>
+    The oscillatory behaviour reflects the absence of a stable pure strategy in
+    rock–paper–scissors.  Similar dynamics arise in competitive MARL when
+    agents chase each other’s weaknesses.  Understanding these dynamics can
+    guide algorithm design, for example by adding regularisation or opponent
+    modelling to stabilise learning.
+  </p>
+
+  <h2>21.5 Summary</h2>
+  <p>
+    Multi‑agent reinforcement learning extends RL to settings with multiple
+    interacting learners.  The Markov game formalism defines states, joint
+    actions and individual rewards【104463272107487†L115-L123】.  Cooperative,
+    competitive and mixed‑interest scenarios demand different algorithmic
+    approaches【104463272107487†L124-L139】.  Centralised training with
+    decentralised execution uses a global critic during learning but allows
+    decentralised policies at test time【104463272107487†L203-L205】.  Opponent
+    modelling and game‑theoretic concepts such as Nash equilibrium help agents
+    navigate competitive environments.  Despite challenges like non‑stationarity
+    and credit assignment, MARL continues to expand our ability to coordinate
+    and compete in complex systems.
+  </p>
+
+  <h2>Sources</h2>
+  <p>
+    Multi‑agent reinforcement learning studies the behaviour of multiple agents
+    pursuing their own objectives in a shared environment【104463272107487†L50-L55】.
+    Markov games generalise MDPs to multiple agents and are characterised by
+    a tuple \((N,S,A,P,R,\gamma)\)【104463272107487†L115-L123】.  MARL problems are
+    categorised into cooperative, competitive and mixed‑interest settings
+    depending on agents’ reward structures【104463272107487†L124-L139】.  Centralised
+    training with decentralised execution allows agents to use global information
+    during learning while acting locally at test time【104463272107487†L203-L205】.  Non‑stationarity,
+    partial observability, scalability and credit assignment are key challenges
+    identified in multi‑agent RL【104463272107487†L149-L182】.
+  </p>
+</body>
+</html>
