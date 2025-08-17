@@ -1,36 +1,5 @@
 
 
-Part VIII — Engineering & Production
-
-29. Experimentation & Evaluation
-
-Metrics & Confidence Intervals
-
-Ablations & Hyperparameter Tuning
-
-Statistical Significance
-
-Reproducibility & Seeding
-
-30. Systems, Scaling & Tooling
-
-Vectorized Environments & Parallelism
-
-Distributed Training & Rollouts
-
-Replay Storage & Checkpointing
-
-Monitoring & Dashboards
-
-31. Deployment & Operations
-
-Serving Policies Online
-
-Guardrails, Kill‑Switches & Rollbacks
-
-Drift Detection & Retraining
-
-Human‑in‑the‑Loop
 
 Part IX — Theory Deep Dives
 
@@ -86,6 +55,7 @@ Open Problems & Trends
 
 
 Community & Conferences
+
 
 
 
