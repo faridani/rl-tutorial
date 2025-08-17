@@ -9,6 +9,16 @@ The following two lessons should prepare you for almost all of the math that you
 ## Chapter 0-1: College level mathematics  [visit lesson](part-0/basic_math.html)
 ## Chapter 0-2: 1st year grad level mathematics  [visit lesson](part-0/more_math.html)
 ## Chapter 0-3: RL with Python  [visit lesson](part-0/rl_in_python.html)
+* Introduction
+* Doing Math in Python
+* Markov Decision Processes
+* Partially Observable MDPs (POMDPs)
+* Q-Learning
+* Deep Q-Networks (DQN)
+* Policy Gradient Methods & Proximal Policy Optimisation (PPO)
+* Group Relative Policy Optimisation (GRPO)
+* Optimisation: Gradient Descent and Adam
+* Conclusion
 
   
 # Part I — Foundations
