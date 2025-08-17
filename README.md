@@ -35,7 +35,29 @@ The following two lessons should prepare you for almost all of the math that you
 * Experiment Tracking & Reproducibility
 * Testing & Debugging RL
 
-# Part 3 
+# Part II — Bandits & MDPs 
+
+## Chapter 5. Multi‑Armed Bandits [visit lesson](part-2/chapter5.html) 
+* ε‑Greedy Strategies
+* Upper Confidence Bounds (UCB)
+* Thompson Sampling
+* Contextual Bandits & LinUCB
+
+## Chapter 6. Markov Decision Processes [visit lesson](part-2/chapter6.html) 
+
+* MDP Formalism
+* Value Functions & Bellman Operators
+* Policy Evaluation
+* Policy & Value Iteration
+
+## Chapter 7. Partially Observable MDPs [visit lesson](part-2/chapter7.html) 
+
+* Belief States & Bayes Filters
+* Point‑Based Planning
+* POMDPs with Recurrent Policies
+* Information Gathering
+
+# Part 4  
 
 * Q-Learning, SARSA, Double Q-Learning Lab [lab and tutorial](q-learning-lab.html)
 * Online tutorials worthy of your time [other-resources.html](other-resources.html)
