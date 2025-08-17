@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 23 – Preference‑Based Reinforcement Learning &amp; Alignment</title>
+  <style>
+    body { background-color: #ffffff; font-family: "Georgia", serif; margin: 40px; line-height: 1.6; color: #333333; }
+    pre { background: #f4f4f4; padding: 10px; border-left: 4px solid #cccccc; overflow-x: auto; }
+    code { font-family: monospace; }
+    h1, h2, h3 { color: #222222; }
+  </style>
+</head>
+<body>
+  <h1>Chapter 23 – Preference‑Based Reinforcement Learning &amp; Alignment</h1>
+  <p>
+    Reinforcement learning from human preferences has become a cornerstone of
+    aligning modern language models and other complex agents with
+    human values.  Instead of providing an explicit reward function
+    upfront, a designer collects feedback from people—often in the form of
+    pairwise comparisons or rankings of different outcomes—and uses this
+    feedback to train a surrogate reward model.  The policy then optimises
+    this learned reward using reinforcement learning.  In this chapter we
+    describe how reward models are constructed from human feedback, how
+    they are used in the RLHF pipeline via proximal policy optimisation
+    (PPO), and how newer methods such as Group Relative Policy
+    Optimisation (GRPO) reduce computational costs for training large
+    language models.  We also discuss safety concerns and bias in
+    preference‑based RL and how to evaluate alignment.
+  </p>
+
+  <h2>23.1 Reward modelling from human feedback</h2>
+  <p>
+    At the heart of preference‑based reinforcement learning is the
+    <strong>reward model</strong>, a function that scores an agent’s output so that
+    higher scores correspond to more desirable behaviour.  The reward model
+    is typically trained on human feedback collected by asking annotators to
+    rank or rate different outputs.  The Wikipedia article on reinforcement
+    learning from human feedback notes that RLHF involves training a reward
+    model to represent human preferences, and that this model is first
+    trained in a supervised manner to predict whether a response to a given
+    prompt is good or bad based on ranking data【602037258146209†L333-L349】.
+    Because it is difficult to hand‑craft a reward function that captures
+    subtle human values, learning a reward model from feedback provides a
+    practical alternative.
+  </p>
+  <p>
+    To construct a reward model, one begins with a pre‑trained base model
+    (e.g., a language model) and replaces its final layer with a regression
+    head that outputs a scalar reward.  The model is then trained on a
+    dataset of prompt–response pairs with associated preference labels.  The
+    RLHF article points out that the reward model is usually initialised
+    with a pre‑trained model and trained to assign higher scores to outputs
+    that humans consider better【602037258146209†L333-L349】.  If only pairwise
+    comparisons are available, one can convert them into a binary label by
+    training the model to predict which response in each pair is preferred.
+    This formulation often uses the Bradley–Terry or Plackett–Luce models
+    for the likelihood of human preferences, and the model is trained via
+    maximum likelihood estimation.  Once trained, the reward model provides
+    a differentiable signal to guide policy improvement.
+  </p>
+  <p>
+    In practice, the amount and quality of feedback data are crucial.  The
+    RLHF article notes that although RLHF does not require massive amounts
+    of data, sourcing high‑quality preference labels is expensive and
+    important to avoid bias【602037258146209†L359-L362】.  If the annotators are
+    not representative of the intended user base, the reward model may
+    encode biases that propagate into the policy.  Methods such as
+    active learning can be used to select informative queries for human
+    annotation and thereby reduce data requirements.  The next Python
+    example demonstrates how to train a simple reward model from pairwise
+    preferences using logistic regression.
+  </p>
+  <pre><code># Example: training a simple reward model from pairwise preferences
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+
+# Synthetic data: each sample is a pair of feature vectors (x1, x2) with label
+# 1 if x1 is preferred, 0 if x2 is preferred.  In a real system these would
+# come from human comparisons of agent outputs.
+n_samples = 1000
+dim = 5
+rng = np.random.default_rng(0)
+x1 = rng.normal(size=(n_samples, dim))
+x2 = rng.normal(size=(n_samples, dim))
+
+# Underlying true utility function: dot product with unknown weight vector
+true_w = rng.normal(size=dim)
+u1 = x1 @ true_w
+u2 = x2 @ true_w
+labels = (u1 > u2).astype(int)
+
+# Construct difference features and train a logistic regression reward model
+X_diff = x1 - x2
+model = LogisticRegression().fit(X_diff, labels)
+
+# The reward of a new observation x is the dot product w·x
+def reward(x):
+    return model.coef_.flatten().dot(x)
+
+# Evaluate on a new sample
+test_x = rng.normal(size=dim)
+print("Estimated reward of test sample:", reward(test_x))
+</code></pre>
+  <p>
+    The code above creates synthetic feature vectors and preference labels
+    representing human comparisons.  By training a logistic regression on
+    the difference of features, the model learns weights that estimate
+    relative preferences.  In real RLHF pipelines, the feature vectors are
+    high‑dimensional hidden representations of prompts and responses, and
+    the reward model is a neural network fine‑tuned on ranking data.  The
+    logistic regression example illustrates the basic idea of estimating a
+    reward function from pairwise comparisons.
+  </p>
+
+  <h2>23.2 Reinforcement learning with PPO</h2>
+  <p>
+    Once a reward model has been trained, it can be used to optimise a
+    policy via reinforcement learning.  The standard approach in RLHF is to
+    use <strong>proximal policy optimisation</strong> (PPO) as the policy gradient
+    method.  PPO iteratively generates new responses, evaluates them using
+    the reward model, and updates the policy to maximise the expected
+    reward while penalising large deviations from the initial supervised
+    model.  The RLHF article explains that during the RL phase, prompts are
+    sampled, responses are generated, and each response is scored by the
+    reward model; the collected tuples (prompt, response, reward) form a
+    dataset used to update the policy via a policy gradient method【602037258146209†L592-L612】.  The
+    objective function consists of the expected reward minus a KL divergence
+    penalty that discourages the policy from moving too far from the
+    supervised model【602037258146209†L622-L633】.  A suitable hyperparameter β
+    balances exploration and retention of prior knowledge.
+  </p>
+  <p>
+    Technically, PPO maximises a <em>clipped surrogate objective</em>.  The RLHF
+    article shows that the objective involves the ratio of the new policy to
+    the old policy, multiplied by the advantage estimate, clipped within
+    an interval to prevent excessively large policy updates【602037258146209†L668-L679】.
+    The advantage is computed as the reward minus a value estimator.  In
+    the RLHF setting, the value estimator is often initialised from the
+    reward model and updated concurrently to reduce variance【602037258146209†L660-L683】.
+    A KL‑penalty term encourages the model to output high‑entropy text and
+    prevents the policy from collapsing to a narrow set of responses【602037258146209†L622-L637】.
+    The combination of these terms yields stable learning while aligning
+    the agent with human preferences.
+  </p>
+  <p>
+    The following Python example demonstrates a toy PPO loop for a pricing
+    agent using a trained reward model.  We consider a parameterised
+    Gaussian policy that outputs continuous prices; the policy is updated
+    using the PPO clipped objective.  Although simplified, this example
+    illustrates how to incorporate a reward model and KL penalty into
+    policy optimisation.
+  </p>
+  <pre><code># Toy PPO example for preference-based pricing
+import numpy as np
+
+class GaussianPolicy:
+    def __init__(self, mean=0.0, log_std=0.0):
+        self.mean = mean
+        self.log_std = log_std
+
+    def sample(self):
+        return self.mean + np.exp(self.log_std) * np.random.randn()
+
+    def log_prob(self, x):
+        return -0.5 * ((x - self.mean) / np.exp(self.log_std))**2 - self.log_std - 0.5 * np.log(2 * np.pi)
+
+    def update(self, grads, lr=0.1):
+        # simple gradient ascent update on mean and log_std
+        self.mean += lr * grads[0]
+        self.log_std += lr * grads[1]
+
+
+def reward_model(price):
+    # synthetic reward from human preferences: penalise too low/high price
+    return -((price - 1.0)**2)
+
+
+def kl_div(old_policy, new_policy, samples):
+    # compute empirical KL divergence between two Gaussian policies on samples
+    return np.mean(old_policy.log_prob(samples) - new_policy.log_prob(samples))
+
+# initialise policy and old policy copy
+policy = GaussianPolicy(mean=0.0, log_std=0.0)
+old_policy = GaussianPolicy(mean=0.0, log_std=0.0)
+beta = 0.1  # KL penalty weight
+
+for epoch in range(50):
+    # collect rollouts
+    prices = np.array([policy.sample() for _ in range(32)])
+    rewards = np.array([reward_model(p) for p in prices])
+    old_log_probs = np.array([old_policy.log_prob(p) for p in prices])
+    new_log_probs = np.array([policy.log_prob(p) for p in prices])
+    advantages = rewards  # here advantage = reward since no value baseline
+
+    # compute PPO clipped objective and gradients (analytical for Gaussian)
+    ratios = np.exp(new_log_probs - old_log_probs)
+    clipped = np.clip(ratios, 1-0.2, 1+0.2)
+    # approximate gradients w.r.t mean and log_std
+    grad_mean = np.mean((ratios * advantages) * (prices - policy.mean) / np.exp(policy.log_std)**2)
+    grad_log_std = np.mean((ratios * advantages) * (((prices - policy.mean)**2 / np.exp(2*policy.log_std)) - 1))
+    # subtract KL penalty gradient
+    kl = kl_div(old_policy, policy, prices)
+    grad_mean -= beta * (policy.mean - old_policy.mean)
+    grad_log_std -= beta * (policy.log_std - old_policy.log_std)
+    # update policy and refresh old policy
+    policy.update((grad_mean, grad_log_std), lr=0.05)
+    old_policy.mean, old_policy.log_std = policy.mean, policy.log_std
+
+print("Optimised mean price:", policy.mean)
+</code></pre>
+  <p>
+    This code defines a simple one‑dimensional Gaussian policy and updates it
+    using a PPO‑style gradient ascent with a KL penalty.  The reward
+    function penalises prices far from 1.0, simulating a human preference
+    for moderate prices.  After several epochs, the policy’s mean converges
+    toward the preferred price.  In real RLHF systems, the policy is a
+    large neural network generating sequences of tokens, and the rewards
+    come from a learned reward model rather than a hand‑crafted function.
+  </p>
+
+  <h2>23.3 Group Relative Policy Optimisation (GRPO)</h2>
+  <p>
+    While PPO has become a default choice for RLHF, its reliance on a
+    separate value network and per‑token advantage estimation can make
+    training expensive for very large models.  <strong>Group Relative Policy
+    Optimisation</strong> (GRPO) is a recent algorithm designed to reduce
+    computational overhead and improve stability when fine‑tuning language
+    models.  The GRPO blog explains that GRPO builds on PPO but introduces
+    three key innovations: it eliminates the need for a value network,
+    uses group sampling for more efficient advantage estimation, and
+    applies a more conservative update by penalising both the objective and
+    the rewards【560568172576769†L64-L71】.  Because there is no separate critic
+    network, GRPO reduces memory usage and simplifies implementation.
+  </p>
+  <p>
+    In GRPO, the language model itself serves as the policy.  To compute
+    advantages without a value network, GRPO samples a group of outputs
+    from the current policy for the same prompt and uses the empirical
+    distribution of rewards within the group to normalise rewards and
+    compute <em>relative advantages</em>【560568172576769†L97-L101】.  This group‑normalised
+    advantage implicitly estimates a baseline by subtracting the average
+    reward of the group, thereby reducing variance.  During optimisation,
+    the objective averages across both groups and sequence lengths, clips
+    updates to maintain trust regions, and includes a KL penalty to avoid
+    diverging from the reference policy【560568172576769†L103-L114】.  In this
+    way, GRPO combines the benefits of PPO’s conservatism with group
+    relative estimation to produce stable updates for large language
+    models.
+  </p>
+  <p>
+    The following toy example illustrates GRPO.  We model a policy that
+    generates an action (e.g., a price) and compute relative advantages over
+    a group of actions drawn for the same state.  The policy is updated to
+    maximise group‑relative rewards with clipping and a KL penalty.  This
+    captures the essence of GRPO without the complexities of sequence
+    generation.
+  </p>
+  <pre><code># Simplified GRPO example with group-normalised advantages
+import numpy as np
+
+class LinearPolicy:
+    def __init__(self, w):
+        self.w = np.array(w, dtype=float)
+
+    def act(self, state):
+        return state.dot(self.w) + np.random.randn() * 0.1
+
+    def update(self, grad, lr=0.05):
+        self.w += lr * grad
+
+
+def reward_model(state, action):
+    # simple reward: negative squared error to target
+    target = state.sum()
+    return -((action - target)**2)
+
+
+def grpo_step(policy, states, group_size=8, beta=0.1):
+    grads = np.zeros_like(policy.w)
+    for state in states:
+        # sample a group of actions from current policy for same state
+        actions = np.array([policy.act(state) for _ in range(group_size)])
+        rewards = np.array([reward_model(state, a) for a in actions])
+        # compute relative advantages: subtract group mean
+        advantages = rewards - rewards.mean()
+        # compute gradient of log-prob under linear Gaussian policy
+        # assume log-prob gradient w.r.t. weights is (advantage)*state
+        for adv in advantages:
+            grads += adv * state
+        # add KL penalty pushing weights toward zero (reference)
+        grads -= beta * policy.w
+    grads /= (len(states) * group_size)
+    policy.update(grads)
+
+policy = LinearPolicy(w=[0.0, 0.0])
+states = [np.array([1.0, 2.0]), np.array([-1.0, 0.5])]
+for step in range(50):
+    grpo_step(policy, states)
+print("Learned weights:", policy.w)
+</code></pre>
+  <p>
+    This GRPO example samples a group of actions for each state, computes
+    group‑normalised advantages by subtracting the group mean, and updates
+    the linear policy weights toward higher rewards with a KL penalty.  The
+    KL penalty encourages the policy parameters to stay near the origin,
+    analogous to staying close to the reference policy.  In practice,
+    GRPO has been shown to achieve competitive performance to PPO while
+    using fewer resources, making it appealing for large language models.
+  </p>
+
+  <h2>23.4 Safety, bias and evaluation</h2>
+  <p>
+    Preference‑based RL inherits many of the ethical and safety challenges
+    present in supervised learning and reinforcement learning.  One of the
+    most pressing issues is bias: if the human preference data is not
+    representative of the broader population, the reward model will encode
+    those biases and the policy will amplify them.  The RLHF article
+    cautions that collecting high‑quality and representative human feedback
+    is expensive, and failure to do so may lead to unwanted biases in the
+    resulting models【602037258146209†L359-L362】.  Furthermore, because RLHF
+    directly optimises a model’s behaviour based on human feedback, there is
+    a risk of overfitting to annotators’ preferences and neglecting
+    considerations such as fairness and robustness.
+  </p>
+  <p>
+    Evaluating aligned agents requires more than just tracking reward.
+    Practitioners often measure <em>helpfulness</em>, <em>harmlessness</em> and
+    <em>honesty</em> separately.  Quantitative metrics may include the average
+    human rating of generated responses, the distribution of content types
+    (to detect unwanted content), and the diversity of outputs to ensure
+    high entropy.  It is also common to perform audits looking for
+    demographic biases or content harmful to particular groups.  When
+    policies are deployed, additional guardrails such as rejection
+    sampling, safe fallback responses and human‑in‑the‑loop review can
+    mitigate harm.
+  </p>
+  <p>
+    Finally, researchers continue to explore alternatives to RLHF that
+    circumvent the need for a separate reward model, such as direct
+    preference optimisation and identity preference optimisation.  These
+    methods aim to reduce complexity and eliminate the risk of reward
+    hacking by optimising the policy directly on preference data.  Yet,
+    regardless of the optimisation method, ensuring that the learnt policy
+    reflects the values of its users remains a central challenge.  Ongoing
+    work in preference modelling, robustness and fairness will shape the
+    future of aligned AI systems.
+  </p>
+
+  <h2>Summary</h2>
+  <p>
+    This chapter introduced the process of learning policies from human
+    preferences.  We began by constructing reward models from pairwise
+    comparisons, noted the challenges in data collection and bias, and
+    illustrated how a reward model can be trained using logistic
+    regression.  We then described how PPO is used in RLHF to update
+    policies against the reward model while constraining the policy via a
+    KL penalty and clipping.  We implemented a simple PPO loop for a
+    pricing problem.  Next, we examined GRPO, an algorithm that removes
+    the value network and employs group‑normalised advantages to reduce
+    variance and resource requirements, and demonstrated a toy GRPO
+    update.  Finally, we discussed ethical considerations, including
+    bias, safety and evaluation of aligned agents.  Preference‑based
+    reinforcement learning is an active area of research that sits at the
+    intersection of machine learning, ethics and human‑computer
+    interaction.
+  </p>
+
+  <h2>Sources</h2>
+  <p>
+    Key references include the RLHF article on Wikipedia for definitions and
+    descriptions of reward models, RLHF training and limitations【602037258146209†L333-L349】【602037258146209†L359-L362】【602037258146209†L592-L612】【602037258146209†L622-L637】【602037258146209†L660-L683】【602037258146209†L668-L679】,
+    and the GRPO illustrated breakdown blog for innovations of GRPO【560568172576769†L64-L71】【560568172576769†L97-L101】【560568172576769†L103-L114】.
+  </p>
+</body>
+</html>

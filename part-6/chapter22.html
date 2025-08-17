@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 22 – Imitation &amp; Inverse Reinforcement Learning</title>
+  <style>
+    body { background-color: #ffffff; font-family: "Georgia", serif; margin: 40px; line-height: 1.6; color: #333333; }
+    pre { background: #f4f4f4; padding: 10px; border-left: 4px solid #cccccc; overflow-x: auto; }
+    code { font-family: monospace; }
+    h1, h2, h3 { color: #222222; }
+  </style>
+</head>
+<body>
+  <h1>Chapter 22 – Imitation &amp; Inverse Reinforcement Learning</h1>
+  <p>
+    While reinforcement learning agents learn by trial and error, <em>imitation learning</em>
+    seeks to learn directly from expert demonstrations.  When the reward signal is
+    sparse or difficult to specify, it may be easier for a human expert to
+    demonstrate the desired behaviour rather than to design a reward function.
+    In this chapter we explore behaviour cloning, the DAgger algorithm for data
+    aggregation, inverse reinforcement learning based on the principle of
+    maximum entropy, and adversarial imitation methods such as GAIL and AIRL.
+  </p>
+
+  <h2>22.1 Behaviour cloning</h2>
+  <p>
+    <strong>Behaviour cloning</strong> (BC) is the simplest form of imitation learning.  The
+    idea is to treat expert demonstrations as a dataset of state–action pairs and
+    apply supervised learning to train a policy that maps each observation to the
+    expert’s action.  The Wikipedia article on imitation learning describes BC
+    as using supervised learning to approximate the expert’s policy so that the
+    learned policy produces an action distribution similar to the expert’s【347575509450837†L144-L149】.
+    This makes BC easy to implement: collect trajectories, split them into
+    inputs and labels and train a classifier or regression model.
+  </p>
+  <p>
+    However, BC assumes that the state–action pairs are independent and
+    identically distributed.  In reality, actions influence future states, so
+    errors compound: if the policy makes a mistake and enters a state that the
+    expert never visited, it has no guidance on what to do.  Wikipedia notes
+    that behaviour cloning suffers from <em>distribution shift</em>: mistakes cause the
+    agent to stray into unseen states where its behaviour is undefined【347575509450837†L151-L154】.
+    Despite this limitation, BC can work well in domains with short horizons or
+    where the expert’s demonstrations cover the state space thoroughly.
+  </p>
+  <p>
+    The following Python example illustrates behaviour cloning for a pricing
+    problem.  We assume we have expert data consisting of features (e.g., current
+    inventory, demand signal) and expert prices.  We train a simple linear
+    regression model to predict the expert’s price decisions.  Once trained, the
+    model can propose prices based on new observations without any reinforcement
+    learning loop.
+  </p>
+  <pre><code>import numpy as np
+from sklearn.linear_model import LinearRegression
+
+# Expert dataset: rows are (inventory, demand) and expert price
+X = np.array([[10, 5], [8, 7], [4, 9], [6, 3], [9, 8]])
+y = np.array([4.0, 5.0, 6.5, 3.0, 5.5])
+
+# Behaviour cloning: train a regression model
+model = LinearRegression().fit(X, y)
+
+# Use the model to predict a price for a new state
+inventory, demand = 7, 6
+predicted_price = model.predict([[inventory, demand]])[0]
+print("Predicted price:", predicted_price)
+  </code></pre>
+  <p>
+    This supervised approach may provide a reasonable starting policy when it is
+    easy to collect demonstrations.  In practice, one might use more expressive
+    models (e.g., neural networks) and feature engineering, but the underlying
+    principle remains the same.
+  </p>
+
+  <h2>22.2 DAgger and data aggregation</h2>
+  <p>
+    To mitigate the distribution shift problem, Ross et al. proposed the
+    <strong>Dataset Aggregation</strong> (DAgger) algorithm.  According to the imitation
+    learning page, DAgger iteratively trains on a dataset that combines expert
+    demonstrations and states encountered by the learner: in each iteration, the
+    agent collects data by rolling out its current policy, queries the expert
+    for the correct action on each visited observation, aggregates this new
+    data into the dataset and retrains the policy【347575509450837†L165-L173】.
+  </p>
+  <p>
+    DAgger effectively reduces compounding errors.  By exposing the policy to
+    states it is likely to encounter and labeling them with expert actions,
+    DAgger forces the learner to correct its mistakes early.  Over time the
+    aggregated dataset covers the distribution induced by the learned policy,
+    rather than just the expert’s distribution.  In pricing tasks, this means
+    that if the policy occasionally sets a suboptimal price and enters an
+    unfamiliar inventory state, the expert feedback will teach it how to recover.
+  </p>
+  <p>
+    The pseudo‑code below implements a simple DAgger loop.  We start with an
+    initial behaviour cloning model, roll it out to collect new states, query
+    the expert for actions on those states and append them to our dataset.  We
+    repeat this process for a fixed number of iterations.
+  </p>
+  <pre><code>import numpy as np
+from sklearn.tree import DecisionTreeRegressor
+
+def query_expert(state):
+    """Expert pricing rule: reduce price if inventory is high, otherwise raise."""
+    inventory, demand = state
+    return 4.0 - 0.1 * (inventory - 5) + 0.2 * (demand - 5)
+
+# initial dataset and model
+X = np.array([[10, 5], [8, 7], [4, 9], [6, 3], [9, 8]])
+y = np.array([4.0, 5.0, 6.5, 3.0, 5.5])
+model = DecisionTreeRegressor().fit(X, y)
+
+for iteration in range(5):
+    # roll out current policy to collect new states
+    new_states = []
+    state = (np.random.randint(3, 10), np.random.randint(3, 10))
+    for _ in range(10):
+        price = model.predict([state])[0]
+        # environment dynamics: inventory decreases with demand and increases
+        # randomly; demand changes randomly
+        inventory = max(0, state[0] - int(price)) + np.random.randint(0, 3)
+        demand = max(0, state[1] + np.random.randint(-2, 3))
+        new_states.append((inventory, demand))
+        state = (inventory, demand)
+    # query expert actions for visited states and aggregate
+    new_actions = np.array([query_expert(s) for s in new_states])
+    X = np.vstack([X, new_states])
+    y = np.concatenate([y, new_actions])
+    # retrain model on aggregated dataset
+    model = DecisionTreeRegressor().fit(X, y)
+  </code></pre>
+  <p>
+    As the dataset grows, the learned policy becomes robust to states induced by
+    its own behaviour.  Although DAgger requires querying the expert during
+    training, it can dramatically improve performance when distribution shift
+    would otherwise cause cascading errors.
+  </p>
+
+  <h2>22.3 Maximum entropy inverse reinforcement learning</h2>
+  <p>
+    Inverse reinforcement learning (IRL) aims to infer the underlying reward
+    function that explains expert behaviour.  Instead of directly imitating the
+    policy, IRL tries to learn what motivates the expert and then derives a
+    policy by maximising the inferred reward.  A popular formulation is
+    <strong>maximum entropy IRL</strong>, introduced by Ziebart et al., which uses the
+    principle of maximum entropy to resolve ambiguity.  The maximum entropy
+    principle states that, subject to known constraints, the probability
+    distribution that best represents our knowledge is the one with highest
+    entropy【142452653240392†L119-L123】.  In the context of IRL, the constraint is
+    that the expected feature counts under the learned policy match those of the
+    expert.【142452653240392†L125-L137】.
+  </p>
+  <p>
+    Practically, maximum entropy IRL assigns probabilities to trajectories
+    proportional to the exponential of their cumulative reward.  The method
+    learns a reward function (parameterised by weights on features) such that
+    under the optimal policy the expected feature counts match the expert’s and
+    no other assumptions are made【142452653240392†L133-L137】.  This yields a
+    stochastic policy that prefers trajectories with higher reward but still
+    explores alternative trajectories.  Maximum entropy IRL is particularly
+    useful when expert demonstrations are noisy or suboptimal, as it avoids
+    over‑committing to one particular behaviour.
+  </p>
+  <p>
+    The following pseudo‑code sketches the structure of a maximum entropy IRL
+    algorithm for a small MDP.  We assume we have a feature representation
+    \(\phi(s,a)\), expert demonstrations and a known transition model.  The
+    algorithm iteratively updates the reward weights to minimise the difference
+    between feature counts from the expert and those generated by the current
+    policy.  Once the reward is learned, a standard RL algorithm can compute the
+    optimal policy.
+  </p>
+  <pre><code>import numpy as np
+
+# features: phi[s, a] gives feature vector for state-action pair
+# demo_counts: empirical feature counts from expert demonstrations
+weights = np.zeros(num_features)
+learning_rate = 0.1
+
+def soft_value_iteration(weights):
+    """Compute soft value function V and Q under current reward."""
+    V = np.zeros(num_states)
+    for _ in range(50):
+        Q = np.zeros((num_states, num_actions))
+        for s in range(num_states):
+            for a in range(num_actions):
+                reward = np.dot(weights, phi[s, a])
+                Q[s, a] = reward + gamma * np.sum(P[s, a, :] * V)
+            V[s] = np.log(np.sum(np.exp(Q[s])))  # softmax value
+    return V, Q
+
+for iteration in range(20):
+    # compute policy and expected feature counts under current reward
+    V, Q = soft_value_iteration(weights)
+    policy = np.exp(Q - V[:, None])
+    policy /= policy.sum(axis=1, keepdims=True)
+    # expected feature counts
+    expected_counts = np.zeros_like(weights)
+    for s in range(num_states):
+        for a in range(num_actions):
+            expected_counts += state_visitation[s] * policy[s, a] * phi[s, a]
+    # gradient update
+    gradient = demo_counts - expected_counts
+    weights += learning_rate * gradient
+  </code></pre>
+  <p>
+    Although this implementation is simplified, it shows how maximum entropy
+    IRL combines supervised learning of rewards with reinforcement learning to
+    recover a policy that generalises beyond the demonstrated actions.
+  </p>
+
+  <h2>22.4 Adversarial imitation: GAIL and AIRL</h2>
+  <p>
+    Adversarial imitation learning casts imitation as a minimax game between a
+    generator (the policy) and a discriminator (a reward network).  The
+    <strong>Generative Adversarial Imitation Learning</strong> (GAIL) algorithm learns a
+    policy by simultaneously training it with a discriminator that tries to
+    distinguish expert trajectories from trajectories generated by the policy【585490091644999†L198-L200】.
+    The policy aims to fool the discriminator, while the discriminator learns to
+    tell them apart; at equilibrium, the policy reproduces the expert’s
+    behaviour.  GAIL thus removes the need to specify a reward function and
+    instead learns one implicitly via the discriminator.
+  </p>
+  <p>
+    <strong>Adversarial Inverse Reinforcement Learning</strong> (AIRL) extends this idea by
+    explicitly modelling the reward function.  AIRL learns a reward network and
+    a discriminator simultaneously; the discriminator distinguishes expert and
+    agent trajectories conditioned on the reward function, and the reward is
+    shaped such that matching the discriminator corresponds to maximising the
+    learned reward.  AIRL yields an explicit reward that can generalise across
+    environments and tasks, whereas GAIL directly produces a policy.  Both
+    methods leverage the adversarial framework to reduce imitation learning to
+    a generative modelling problem.
+  </p>
+  <p>
+    The pseudo‑code below outlines a simplified GAIL training loop for a toy
+    pricing environment.  We maintain a discriminator network \(D\) and a policy
+    network \(\pi\).  We alternate between updating \(D\) to better distinguish
+    expert and agent data and updating \(\pi\) to maximise the discriminator’s
+    confusion.  In practice one would use neural networks and gradient
+    optimisation; here we illustrate the structure.
+  </p>
+  <pre><code># expert_data: list of (state, action) pairs from expert
+policy = initialize_policy()
+discriminator = initialize_discriminator()
+
+for epoch in range(100):
+    # collect agent trajectories
+    agent_data = []
+    state = env.reset()
+    done = False
+    while not done:
+        action = policy.sample_action(state)
+        next_state, _, done = env.step(action)
+        agent_data.append((state, action))
+        state = next_state
+    # update discriminator to distinguish expert vs agent
+    for (state, action) in expert_data + agent_data:
+        label = 1 if (state, action) in expert_data else 0
+        pred = discriminator.predict(state, action)
+        discriminator.update(pred, label)
+    # update policy using rewards from discriminator
+    for (state, action) in agent_data:
+        reward = -np.log(1 - discriminator.predict(state, action))
+        policy.update(state, action, reward)
+  </code></pre>
+  <p>
+    In practice, GAIL and AIRL often use proximal policy optimisation (PPO) as
+    the policy update rule and train the discriminator with gradient descent.
+    These adversarial methods have been successfully applied to control tasks and
+    can be adapted to pricing and decision‑making problems by defining suitable
+    state and action spaces.
+  </p>
+
+  <h2>22.5 Summary</h2>
+  <p>
+    Imitation learning provides alternatives to conventional reinforcement
+    learning when rewards are sparse or unknown.  Behaviour cloning uses
+    supervised learning to mimic expert actions【347575509450837†L144-L149】 but suffers
+    from distribution shift【347575509450837†L151-L154】.  DAgger addresses this by
+    iteratively aggregating data from the learner’s rollouts and expert
+    corrections【347575509450837†L165-L173】.  Maximum entropy inverse reinforcement
+    learning infers a reward function by matching feature expectations while
+    maximising entropy【142452653240392†L119-L137】.  Adversarial imitation
+    algorithms such as GAIL learn a policy by training it against a discriminator
+    that distinguishes expert and agent trajectories【585490091644999†L198-L200】.
+    Together, these techniques offer powerful tools for learning from examples
+    rather than from explicit reward signals.
+  </p>
+
+  <h2>Sources</h2>
+  <p>
+    Behaviour cloning applies supervised learning to imitate an expert’s policy【347575509450837†L144-L149】
+    but can suffer from distribution shift as the policy visits unseen states【347575509450837†L151-L154】.  The DAgger algorithm iteratively collects data by
+    rolling out the learner’s policy, querying the expert for correct actions and
+    retraining on the aggregated dataset【347575509450837†L165-L173】.  Maximum entropy inverse
+    reinforcement learning uses the principle of maximum entropy to infer a
+    reward function that matches expert feature expectations【142452653240392†L119-L137】.
+    GAIL learns a policy by training a generator and discriminator adversarially【585490091644999†L198-L200】.
+  </p>
+</body>
+</html>
