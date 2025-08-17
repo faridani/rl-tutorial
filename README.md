@@ -6,9 +6,11 @@ Download the course material first and then use the following links to go throug
 
 # Part 0 - Mathmetics for RL
 The following two lessons should prepare you for almost all of the math that you will see in RL 
-* Chapter 1: College level mathematics [quick tutorial](part-0/basic_math.html)
-* Chapter 2: 1st year grad level mathematics [quick tutorial](part-0/more_math.html)
+## Chapter 0-1: College level mathematics  [visit lesson](part-0/basic_math.html)
+## Chapter 0-2: 1st year grad level mathematics  [visit lesson](part-0/more_math.html)
+## Chapter 0-3: RL with Python  [visit lesson](part-0/rl_in_python.html)
 
+  
 # Part I — Foundations
 
 ## Chapter 1. An RL Primer [visit lesson](part-1/chapter1.html) 
