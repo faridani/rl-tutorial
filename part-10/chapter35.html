@@ -1,0 +1,378 @@
+<!--
+  Chapter 35: Hands‑On Projects & Templates
+
+  Part X opens with a collection of project ideas and templates that allow
+  readers to experiment with reinforcement learning in realistic yet
+  manageable environments.  Each subsection introduces a toy environment,
+  explains how to model it as an RL problem and provides Python code
+  illustrating a baseline agent.  These projects emphasise pricing,
+  inventory control, ad auctions and classical gridworld navigation.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 35 – Hands‑On Projects &amp; Templates</title>
+  <style>
+    body {
+      background: #ffffff;
+      color: #222;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      margin: 40px;
+      line-height: 1.6;
+    }
+    h1, h2 {
+      color: #2c3e50;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-family: "Courier New", monospace;
+    }
+    footer {
+      margin-top: 40px;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <h1>35 Hands‑On Projects &amp; Templates</h1>
+  <p>
+    Practical experimentation is invaluable for mastering reinforcement
+    learning.  This chapter presents several self‑contained projects that
+    capture core RL concepts while avoiding the complexity of real
+    production systems.  Each project begins with a problem statement,
+    frames it as an RL task and offers a Python template that readers can
+    extend.  The emphasis is on pricing and decision‑making rather than
+    robotics, though the final section returns to a classical maze‑navigation
+    environment.
+  </p>
+
+  <h2>35.1 Pricing Simulator</h2>
+  <p>
+    Dynamic pricing involves choosing prices over time to maximise revenue.
+    A simple way to model this problem is as a multi‑armed bandit where each
+    arm represents a price level.  The agent observes whether a customer
+    purchases at the offered price and updates its estimate of the purchase
+    probability.  A Medium article on dynamic pricing explains that the
+    objective is not merely to estimate demand, but to maximise expected
+    revenue by balancing exploration of different price points and
+    exploitation of known profitable prices【890864616009742†L74-L83】.  The
+    purchase probability typically decreases with price, creating a
+    non‑linear objective【890864616009742†L83-L116】.
+  </p>
+  <p>
+    To get started, we discretise the price range into a few candidate
+    prices and treat each as an arm in a bandit.  The agent’s reward is the
+    revenue (price times purchase indicator).  Epsilon‑greedy or UCB
+    algorithms can be used to explore; they guarantee sub‑linear regret and
+    converge to near‑optimal pricing strategies.  Because the true demand
+    curve is unknown, the agent must sample each price sufficiently
+    often to estimate its profitability.  This project encourages
+    experimentation with different exploration strategies and demand
+    functions.
+  </p>
+  <p>
+    The following template implements an epsilon‑greedy pricing agent.  The
+    environment simulates customer purchase probabilities that decay with
+    price.  The agent maintains estimated conversion rates and updates them
+    after each sale.  Readers can modify the price grid, demand function or
+    exploration policy to explore other scenarios.
+  </p>
+  <pre><code class="language-python">import numpy as np
+import matplotlib.pyplot as plt
+
+# Candidate prices between $1 and $10
+prices = np.linspace(1, 10, 10)
+
+# True conversion probabilities decrease with price
+true_conv = np.exp(-0.3 * (prices - 1))
+
+# Epsilon-greedy parameters
+epsilon = 0.1
+est_conv = np.zeros_like(prices)
+counts = np.zeros_like(prices)
+revenue_history = []
+
+for t in range(1, 1001):
+    # choose price via epsilon-greedy
+    if np.random.rand() < epsilon:
+        i = np.random.randint(len(prices))
+    else:
+        # expected revenue estimate
+        rev_est = prices * est_conv
+        i = np.argmax(rev_est)
+    price = prices[i]
+    # simulate purchase
+    purchase = np.random.rand() < true_conv[i]
+    # update estimates
+    counts[i] += 1
+    est_conv[i] += (purchase - est_conv[i]) / counts[i]
+    # reward is revenue
+    revenue = price if purchase else 0.0
+    revenue_history.append(revenue)
+
+plt.plot(np.cumsum(revenue_history))
+plt.xlabel('Round')
+plt.ylabel('Cumulative revenue')
+plt.title('Epsilon-greedy pricing')
+plt.show()
+  </code></pre>
+
+  <h2>35.2 Inventory Sandbox</h2>
+  <p>
+    Inventory management is a sequential decision problem where an agent
+    observes stock levels and uncertain demand and decides how much to
+    reorder.  The goal is to minimise cumulative costs, including holding
+    cost for excess inventory, stockout penalties and order costs.  The
+    NEASQC inventory use case describes this as an RL problem: the agent
+    interacts with a stochastic environment and must learn an ordering
+    policy that balances supply and demand【28123364841764†L61-L66】.  The
+    problem can be formulated as an MDP, and model‑free RL methods have
+    been shown to provide robust and adaptable solutions【28123364841764†L80-L88】.
+  </p>
+  <p>
+    Our sandbox models a single‑product inventory system with lead time one
+    and Poisson demand.  The state comprises the current inventory level,
+    and the action is the order quantity.  After each period, the agent
+    observes demand, updates the inventory and incurs a cost.  To
+    encourage exploration, the agent uses SARSA or Q‑learning to update a
+    value function over state–action pairs.  Readers can extend the
+    environment to include multiple products, variable lead times or
+    seasonal demand.
+  </p>
+  <p>
+    The template below implements a tabular SARSA algorithm for a simple
+    inventory control problem.  It tracks Q‑values for discrete inventory
+    levels and order quantities and updates them on each transition.  At
+    the end of training, the learned policy orders more when inventory is
+    low and less when it is high, illustrating how RL can approximate
+    classic base‑stock policies.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+max_inventory = 10
+max_order = 5
+alpha = 0.1
+gamma = 0.95
+epsilon = 0.1
+Q = np.zeros((max_inventory + 1, max_order + 1))
+
+def demand_sample():
+    return np.random.poisson(3)
+
+def step(state, action):
+    # place order
+    inventory = min(max_inventory, state + action)
+    # observe demand
+    d = demand_sample()
+    sales = min(inventory, d)
+    next_inventory = inventory - sales
+    # cost: holding + shortage + order
+    holding = next_inventory * 0.1
+    shortage = max(0, d - inventory) * 2.0
+    order_cost = action * 0.5
+    reward = -(holding + shortage + order_cost)
+    return next_inventory, reward
+
+for episode in range(500):
+    state = 5  # start with mid-level inventory
+    action = np.random.randint(max_order + 1)
+    while True:
+        next_state, reward = step(state, action)
+        # choose next action epsilon-greedily
+        if np.random.rand() < epsilon:
+            next_action = np.random.randint(max_order + 1)
+        else:
+            next_action = np.argmax(Q[next_state])
+        # SARSA update
+        Q[state, action] += alpha * (reward + gamma * Q[next_state, next_action] - Q[state, action])
+        state, action = next_state, next_action
+        if episode == 499 and state == 0:
+            break
+
+# derive policy
+policy = np.argmax(Q, axis=1)
+print("Order quantities for each inventory level:")
+for s in range(max_inventory + 1):
+    print(f"Inventory {s}: order {policy[s]}")
+  </code></pre>
+
+  <h2>35.3 Ad Auction Lab</h2>
+  <p>
+    Online advertising auctions allocate ad slots in real time and reward
+    advertisers when users click.  Traditional bidding strategies rely on
+    static models; however, reinforcement learning can adapt bids to
+    changing competition, inventory and conversion rates.  A tutorial on
+    smart ad bidding notes that RL enables an agent to learn a bidding
+    strategy by interacting with the simulated auction and maximising
+    cumulative reward【80281024993727†L44-L52】.  It emphasises that RL can
+    adapt to changing competitors, new inventory and shifts in click or
+    conversion rates【80281024993727†L44-L52】.
+  </p>
+  <p>
+    In this project, we construct a simplified ad auction environment.
+    The agent selects a bid from a discrete set based on user segment
+    states.  Each bid yields a chance of winning the auction and, if
+    successful, a click value minus the cost.  The agent’s reward is the
+    net profit per impression.  We implement a basic Q‑learning agent that
+    learns to bid higher on segments with high conversion probability and
+    lower on less valuable segments.  This lab can be extended to
+    continuous bids or multi‑agent settings using deep RL.
+  </p>
+  <p>
+    The template code below simulates a two‑arm ad bidding problem.  Users
+    from different segments have different click‑through rates and values.
+    The RL agent uses Q‑learning to choose bids and updates the Q‑table
+    based on the observed reward.  After training, the agent learns to
+    place higher bids for high‑value segments and avoids overspending on
+    low‑value impressions.
+  </p>
+  <pre><code class="language-python">import numpy as np
+import random
+
+states = [0, 1]  # user segments
+bid_space = [0.0, 0.5, 1.0, 1.5, 2.0]
+Q = np.zeros((len(states), len(bid_space)))
+
+# click-through rates and value per click for segments
+ctr = [0.02, 0.1]
+value_per_click = [1.0, 3.0]
+
+alpha, gamma, epsilon = 0.1, 0.95, 0.1
+
+def simulate_click(segment, bid):
+    # probability of winning depends on bid
+    win_prob = min(1.0, bid / 2.0)
+    if np.random.rand() < win_prob:
+        # click occurs with ctr[segment]
+        click = np.random.rand() < ctr[segment]
+        cost = bid  # pay the bid if won
+        reward = value_per_click[segment] if click else 0.0
+        return reward - cost
+    else:
+        return 0.0
+
+for episode in range(2000):
+    s = random.choice(states)
+    # epsilon-greedy bid selection
+    if random.random() < epsilon:
+        a = random.randint(0, len(bid_space) - 1)
+    else:
+        a = int(np.argmax(Q[s]))
+    bid = bid_space[a]
+    # observe reward
+    r = simulate_click(s, bid)
+    # next state (independent samples)
+    s2 = random.choice(states)
+    # Q-learning update
+    Q[s, a] += alpha * (r + gamma * np.max(Q[s2]) - Q[s, a])
+
+print("Learned bidding policy:")
+for s in states:
+    best_bid = bid_space[int(np.argmax(Q[s]))]
+    print(f"Segment {s} → optimal bid: ${best_bid:.2f}")
+  </code></pre>
+
+  <h2>35.4 Gridworlds &amp; Mazes</h2>
+  <p>
+    Gridworlds are canonical environments for illustrating RL algorithms.
+    A gridworld consists of a finite grid of cells with walls, obstacles and
+    terminal states.  The agent starts at a given position and moves
+    up, down, left or right.  Rewards are typically sparse: reaching the
+    goal yields a positive reward while other transitions incur a small
+    cost.  Despite their simplicity, gridworlds exhibit the exploration–
+    exploitation trade‑off and highlight the benefits of value iteration,
+    policy iteration and Q‑learning.
+  </p>
+  <p>
+    In this project, we design a maze environment represented by a 2D
+    array.  The agent must navigate from the start to the goal while
+    avoiding obstacles.  We employ Q‑learning with a tabular state–action
+    table to learn the optimal path.  The state is the agent’s position
+    and the actions are the four cardinal moves.  The reward is +1 when
+    reaching the goal and 0 otherwise, though a small step penalty can
+    encourage shorter paths.  This example can be extended to stochastic
+    mazes, continuous state spaces or multi‑agent gridworlds.
+  </p>
+  <p>
+    The code below constructs a simple gridworld and trains a Q‑learning
+    agent.  It visualises the learned policy by printing arrows pointing
+    in the direction of the greedy action for each cell.  Readers can
+    experiment with different reward structures, discount factors and
+    exploration rates to see how the learned policy changes.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+width, height = 5, 5
+obstacles = {(1, 1), (1, 2), (3, 3)}
+goal = (4, 4)
+
+actions = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # up, right, down, left
+num_actions = len(actions)
+
+Q = np.zeros((width, height, num_actions))
+alpha, gamma, epsilon = 0.5, 0.9, 0.1
+
+def step(state, action):
+    x, y = state
+    dx, dy = actions[action]
+    nx, ny = x + dx, y + dy
+    # check boundaries and obstacles
+    if nx < 0 or nx >= width or ny < 0 or ny >= height or (nx, ny) in obstacles:
+        nx, ny = x, y
+    reward = 1.0 if (nx, ny) == goal else 0.0
+    return (nx, ny), reward
+
+for episode in range(500):
+    state = (0, 0)
+    while state != goal:
+        x, y = state
+        # epsilon-greedy action
+        if np.random.rand() < epsilon:
+            a = np.random.randint(num_actions)
+        else:
+            a = np.argmax(Q[x, y])
+        next_state, reward = step(state, a)
+        nx, ny = next_state
+        # Q-learning update
+        Q[x, y, a] += alpha * (reward + gamma * np.max(Q[nx, ny]) - Q[x, y, a])
+        state = next_state
+
+# visualise policy
+arrows = {0: '↑', 1: '→', 2: '↓', 3: '←'}
+print("Learned policy (arrows point to greedy actions):")
+for y in range(height):
+    row = ''
+    for x in range(width):
+        if (x, y) == goal:
+            row += ' G '
+        elif (x, y) in obstacles:
+            row += ' X '
+        else:
+            a = np.argmax(Q[x, y])
+            row += f' {arrows[a]} '
+    print(row)
+  </code></pre>
+
+  <footer>
+    <strong>Sources</strong><br>
+    Dynamic pricing can be framed as a multi‑armed bandit problem where
+    each price is an arm and the goal is to maximise expected revenue【890864616009742†L74-L83】.  The
+    purchase probability decreases with price, so exploration is needed to
+    identify the most profitable price point【890864616009742†L83-L116】.  Reinforcement
+    learning for smart ad bidding adapts to changing competitors, inventory
+    and conversion rates by learning from interaction with the auction
+    environment【80281024993727†L44-L52】.  In inventory management, RL treats
+    ordering decisions as actions in an MDP and learns a policy to minimise
+    costs under uncertain demand【28123364841764†L61-L66】【28123364841764†L80-L88】.
+  </footer>
+</body>
+</html>

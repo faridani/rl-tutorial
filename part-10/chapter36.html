@@ -1,0 +1,192 @@
+<!--
+  Chapter 36: Reading Lists & Research Roadmaps
+
+  Part X concludes with guidance for further study.  It compiles a
+  reading list of classic texts and courses, highlights influential
+  research papers organised by topic, discusses open problems and trends
+  that define current RL research and surveys key conferences and
+  communities.  Each subsection contains narrative paragraphs offering
+  context and suggestions for deepening one’s understanding.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 36 – Reading Lists &amp; Research Roadmaps</title>
+  <style>
+    body {
+      background: #ffffff;
+      color: #222;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      margin: 40px;
+      line-height: 1.6;
+    }
+    h1, h2 {
+      color: #2c3e50;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-family: "Courier New", monospace;
+    }
+    footer {
+      margin-top: 40px;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <h1>36 Reading Lists &amp; Research Roadmaps</h1>
+  <p>
+    Reinforcement learning is an expansive field with decades of history
+    and a rapidly growing literature.  Navigating this landscape can be
+    daunting.  This chapter offers curated pointers to books, courses,
+    papers and communities that help both newcomers and seasoned
+    practitioners deepen their expertise.  The selected resources span
+    foundational theory, practical algorithms and emerging research
+    directions.
+  </p>
+
+  <h2>36.1 Classic Texts &amp; Courses</h2>
+  <p>
+    The cornerstone of reinforcement learning education is the book
+    <em>Reinforcement Learning: An Introduction</em> by Sutton and Barto.  The
+    MIT Press description notes that the second edition is a "widely used
+    text" on reinforcement learning and provides a clear and simple
+    account of the field’s key ideas【411939724212743†L242-L252】.  It
+    covers core algorithms such as dynamic programming, Monte Carlo
+    methods, temporal‑difference learning and policy gradients, and it
+    integrates insights from psychology and neuroscience【411939724212743†L254-L266】.
+    Many university courses build their lectures around this book, making
+    it an essential reference for self‑study.
+  </p>
+  <p>
+    Complementary texts include <em>Algorithms for Reinforcement Learning</em>
+    by Csaba Szepesvári, which offers a concise yet rigorous treatment of
+    theoretical foundations, and <em>Deep Reinforcement Learning Hands‑On</em>
+    by Maxim Lapan, which focuses on implementing modern algorithms with
+    PyTorch.  Online courses such as David Silver’s <em>Introduction to
+    Reinforcement Learning</em> and lectures from OpenAI’s Spinning Up and
+    DeepMind’s RL course provide high‑quality video content with
+    assignments and notes.  Coursera, Udacity and edX host multiple RL
+    courses that range from beginner to advanced levels.
+  </p>
+  <p>
+    When selecting a course, consider whether it emphasises theory,
+    implementation or applications.  Some courses feature hands‑on
+    assignments using Gym environments, while others delve into proofs and
+    sample complexity.  Combining a textbook with video lectures and
+    projects yields a balanced learning experience.  Joining study groups
+    or discussion forums can help maintain motivation and clarify
+    challenging concepts.
+  </p>
+
+  <h2>36.2 Key Papers by Topic</h2>
+  <p>
+    Reinforcement learning research is organised around themes such as
+    bandits, value learning, policy gradients, model‑based RL and
+    applications.  Within each area, certain papers have become
+    landmarks.  For bandits, seminal works include Lai and Robbins’ proof
+    of logarithmic regret for UCB and the development of Thompson sampling.
+    In deep RL, the <em>Deep Q‑Network (DQN)</em> paper introduced experience
+    replay and target networks, sparking the modern deep RL era.  Follow‑up
+    papers on Double DQN, Dueling Networks, Prioritised Experience Replay
+    and Rainbow DQN refined value‑based methods.
+  </p>
+  <p>
+    Policy gradient research began with Williams’ REINFORCE algorithm and
+    matured with actor–critic methods, TRPO, PPO and Soft Actor‑Critic.
+    Natural policy gradient and trust‑region techniques provide
+    theoretical foundations for stable updates.  Model‑based RL has
+    progressed from Dyna‑Q to latent dynamics models like PlaNet and
+    Dreamer, enabling efficient planning.  Imitation and inverse RL saw
+    breakthroughs such as GAIL and maximum entropy IRL.  Preference‑based
+    RL gained prominence with RLHF and algorithms like PPO+PEFT and GRPO.
+  </p>
+  <p>
+    Keeping up with the literature can be challenging.  Reading survey
+    articles on specific topics (e.g., exploration, hierarchical RL,
+    offline RL) provides a structured overview before diving into
+    individual papers.  Tools such as arXiv Sanity, Papers with Code and
+    curated reading lists on GitHub help filter and track new releases.
+    Reproducibility projects and open‑source implementations enable
+    practitioners to experiment with cutting‑edge algorithms.
+  </p>
+
+  <h2>36.3 Open Problems &amp; Trends</h2>
+  <p>
+    Despite impressive achievements, many challenges remain in
+    reinforcement learning.  Efficient exploration in high‑dimensional
+    spaces, bridging the gap between offline and online RL, and designing
+    algorithms that generalise across tasks are active research areas.
+    Safety and robustness are critical concerns; agents must avoid
+    catastrophic actions and handle non‑stationary, adversarial or
+    uncertain environments.  Fairness and bias mitigation become
+    increasingly important as RL systems impact real‑world decisions.
+  </p>
+  <p>
+    Another frontier is combining RL with large language models and
+    generative models.  Techniques like RLHF, GRPO and reward modelling
+    align generative agents with human preferences.  Multi‑agent RL and
+    self‑play continue to push the boundaries in strategic games and
+    economic simulations.  Researchers are also exploring integrating RL
+    with causal inference, formal verification and symbolic reasoning to
+    produce more interpretable and trustworthy agents.
+  </p>
+  <p>
+    Progress in RL often emerges at the intersection of disciplines.
+    Advances in optimisation (e.g., stochastic approximation, natural
+    gradient), representation learning (e.g., self‑supervised and contrastive
+    methods) and hardware (e.g., GPUs, TPUs) all feed into better RL
+    algorithms.  Keeping abreast of cross‑disciplinary developments helps
+    identify promising directions and new applications.
+  </p>
+
+  <h2>36.4 Community &amp; Conferences</h2>
+  <p>
+    Conferences and workshops provide venues for sharing research,
+    networking and discovering emerging trends.  Major machine learning
+    conferences such as NeurIPS, ICML, ICLR and AAAI regularly feature
+    reinforcement learning tracks and tutorials.  Specialized meetings
+    include the Reinforcement Learning and Decision Making (RLDM)
+    conference and workshops on RL held at these larger conferences.
+    Attending or following conference proceedings allows practitioners to
+    stay current with state‑of‑the‑art advances.
+  </p>
+  <p>
+    Online communities foster collaboration and knowledge sharing.  The
+    RL Discord server, Reddit’s r/reinforcementlearning subreddit and the
+    ML GDE Slack channel host discussions ranging from beginner
+    questions to cutting‑edge research.  Meetups and reading groups
+    organised through university clubs or companies provide a more
+    interactive forum for exploring recent papers and projects.  Many
+    conferences now offer virtual attendance options and release videos of
+    presentations.
+  </p>
+  <p>
+    Contributing to open‑source RL frameworks like Gymnasium, PettingZoo,
+    RLlib and CleanRL is another way to engage with the community.  By
+    implementing algorithms, reporting bugs and sharing benchmarks,
+    practitioners help improve the tools that underpin RL research and
+    education.  Participating in competitions such as the OpenAI Gym
+    Classic Control Challenge or Kaggle RL competitions provides hands‑on
+    experience and exposes participants to a network of enthusiasts.
+  </p>
+
+  <footer>
+    <strong>Sources</strong><br>
+    The second edition of Sutton and Barto’s <em>Reinforcement Learning: An
+    Introduction</em> is described as a widely used text that presents a
+    clear account of key ideas and algorithms【411939724212743†L242-L252】 and
+    discusses topics from tabular learning to function approximation and
+    applications【411939724212743†L254-L266】.
+  </footer>
+</body>
+</html>
