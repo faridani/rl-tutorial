@@ -128,25 +128,25 @@ The following two lessons should prepare you for almost all of the math that you
 
 # Part V — Structure & Constraints
 
-## Chapter 18. Hierarchical & Goal‑Conditioned RL
+## Chapter 18. Hierarchical & Goal‑Conditioned RL [visit lesson](part-5/chapter18.html) 
 * Options & Skills
 * Subgoal Discovery
 * Goal‑Conditioned Policies
 * Hindsight Experience Replay (HER)
 
-## Chapter 19. Offline & Batch RL
+## Chapter 19. Offline & Batch RL  [visit lesson](part-5/chapter19.html) 
 * Off‑Policy Evaluation (IS, WIS, DR)
 * Batch‑Constrained Q‑Learning (BCQ)
 * BEAR & CQL
 * Distribution Shift & Conservatism
 
-## Chapter 20. Safe & Risk‑Sensitive RL
+## Chapter 20. Safe & Risk‑Sensitive RL  [visit lesson](part-5/chapter20.html) 
 * Constrained MDPs
 * Risk Measures (CVaR)
 * Robust MDPs
 * Shielding & Safety‑Critical Evaluation
 
-## Chapter 21. Multi‑Agent RL
+## Chapter 21. Multi‑Agent RL  [visit lesson](part-5/chapter21.html) 
 * Markov Games
 * Centralized Training, Decentralized Execution
 * Cooperation vs. Competition
