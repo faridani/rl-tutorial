@@ -1,0 +1,2969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathematical Prerequisites for Reinforcement Learning</title>
+    <style>
+* {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background-color: #ffffff;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 280px;
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-right: 1px solid #e9ecef;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+
+        .sidebar h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: 400;
+            color: #2c3e50;
+        }
+
+        .sidebar ul {
+            list-style: none;
+        }
+
+        .sidebar li {
+            margin-bottom: 8px;
+        }
+
+        .sidebar a {
+            text-decoration: none;
+            color: #495057;
+            display: block;
+            padding: 5px 0;
+            transition: color 0.2s;
+        }
+
+        .sidebar a:hover {
+            color: #007bff;
+        }
+
+        .sidebar .subsection {
+            margin-left: 15px;
+            font-size: 13px;
+        }
+
+        .content {
+            margin-left: 280px;
+            padding: 40px 60px;
+            max-width: 1000px;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 300;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 400;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            border-bottom: 1px solid #e9ecef;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            font-size: 20px;
+            font-weight: 400;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            color: #34495e;
+        }
+
+        h4 {
+            font-size: 16px;
+            font-weight: 500;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: #34495e;
+        }
+
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+
+        .theorem {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px 20px;
+            margin: 20px 0;
+            font-style: italic;
+        }
+
+        .definition {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 20px 0;
+        }
+
+        .example {
+            background-color: #e8f5e8;
+            border-left: 4px solid #28a745;
+            padding: 15px 20px;
+            margin: 20px 0;
+        }
+
+        .exercise {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px 20px;
+            margin: 20px 0;
+        }
+
+        .math {
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+        }
+
+        .matrix {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        code {
+            background-color: #f1f3f4;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 90%;
+        }
+
+        .section-summary {
+            background-color: #e9ecef;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 5px;
+        }
+
+        .navigation-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin: 40px 0;
+            padding: 20px 0;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .nav-button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+
+        .nav-button:hover {
+            background-color: #0056b3;
+        }
+
+        .nav-button.disabled {
+            background-color: #6c757d;
+            pointer-events: none;
+        }
+    </style>
+    <script>
+      window.MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          displayMath: [['$$', '$$'], ['\\[', '\\]']],
+          processEscapes: true,
+          processEnvironments: true
+        },
+        options: {
+          skipHtmlTags: ['script','noscript','style','textarea','pre']
+        }
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+</head>
+<body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathematical Prerequisites for Reinforcement Learning</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background-color: #ffffff;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 280px;
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-right: 1px solid #e9ecef;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+
+        .sidebar h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: 400;
+            color: #2c3e50;
+        }
+
+        .sidebar ul {
+            list-style: none;
+        }
+
+        .sidebar li {
+            margin-bottom: 8px;
+        }
+
+        .sidebar a {
+            text-decoration: none;
+            color: #495057;
+            display: block;
+            padding: 5px 0;
+            transition: color 0.2s;
+        }
+
+        .sidebar a:hover {
+            color: #007bff;
+        }
+
+        .sidebar .subsection {
+            margin-left: 15px;
+            font-size: 13px;
+        }
+
+        .content {
+            margin-left: 280px;
+            padding: 40px 60px;
+            max-width: 1000px;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 300;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 400;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            border-bottom: 1px solid #e9ecef;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            font-size: 20px;
+            font-weight: 400;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            color: #34495e;
+        }
+
+        h4 {
+            font-size: 16px;
+            font-weight: 500;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: #34495e;
+        }
+
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+
+        .theorem {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px 20px;
+            margin: 20px 0;
+            font-style: italic;
+        }
+
+        .definition {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 20px 0;
+        }
+
+        .example {
+            background-color: #e8f5e8;
+            border-left: 4px solid #28a745;
+            padding: 15px 20px;
+            margin: 20px 0;
+        }
+
+        .exercise {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px 20px;
+            margin: 20px 0;
+        }
+
+        .math {
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+        }
+
+        .matrix {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        code {
+            background-color: #f1f3f4;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 90%;
+        }
+
+        .section-summary {
+            background-color: #e9ecef;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 5px;
+        }
+
+        .navigation-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin: 40px 0;
+            padding: 20px 0;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .nav-button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+
+        .nav-button:hover {
+            background-color: #0056b3;
+        }
+
+        .nav-button.disabled {
+            background-color: #6c757d;
+            pointer-events: none;
+        }
+    </style>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['
+</head>
+<body>
+    <div class="container">
+        <nav class="sidebar">
+            <h2>Contents</h2>
+            <ul>
+                <li><a href="#introduction">Introduction</a></li>
+                <li><a href="#linear-algebra">1. Linear Algebra</a>
+                    <ul class="subsection">
+                        <li><a href="#vectors-matrices">1.1 Vectors and Matrices</a></li>
+                        <li><a href="#eigenvalues">1.2 Eigenvalues and Eigenvectors</a></li>
+                        <li><a href="#matrix-decomposition">1.3 Matrix Decomposition</a></li>
+                        <li><a href="#norms-metrics">1.4 Norms and Metrics</a></li>
+                    </ul>
+                </li>
+                <li><a href="#probability">2. Probability Theory</a>
+                    <ul class="subsection">
+                        <li><a href="#basic-probability">2.1 Basic Probability</a></li>
+                        <li><a href="#random-variables">2.2 Random Variables</a></li>
+                        <li><a href="#distributions">2.3 Probability Distributions</a></li>
+                        <li><a href="#conditional-probability">2.4 Conditional Probability</a></li>
+                        <li><a href="#markov-chains">2.5 Markov Chains</a></li>
+                    </ul>
+                </li>
+                <li><a href="#calculus">3. Calculus and Optimization</a>
+                    <ul class="subsection">
+                        <li><a href="#multivariable-calculus">3.1 Multivariable Calculus</a></li>
+                        <li><a href="#optimization">3.2 Optimization Theory</a></li>
+                        <li><a href="#lagrange-multipliers">3.3 Lagrange Multipliers</a></li>
+                        <li><a href="#gradient-methods">3.4 Gradient Methods</a></li>
+                    </ul>
+                </li>
+                <li><a href="#dynamic-programming">4. Dynamic Programming</a>
+                    <ul class="subsection">
+                        <li><a href="#bellman-equations">4.1 Bellman Equations</a></li>
+                        <li><a href="#value-iteration">4.2 Value Iteration</a></li>
+                        <li><a href="#policy-iteration">4.3 Policy Iteration</a></li>
+                    </ul>
+                </li>
+                <li><a href="#functional-analysis">5. Functional Analysis</a>
+                    <ul class="subsection">
+                        <li><a href="#metric-spaces">5.1 Metric Spaces</a></li>
+                        <li><a href="#banach-spaces">5.2 Banach Spaces</a></li>
+                        <li><a href="#contraction-mapping">5.3 Contraction Mapping</a></li>
+                    </ul>
+                </li>
+                <li><a href="#information-theory">6. Information Theory</a>
+                    <ul class="subsection">
+                        <li><a href="#entropy">6.1 Entropy</a></li>
+                        <li><a href="#mutual-information">6.2 Mutual Information</a></li>
+                        <li><a href="#kl-divergence">6.3 KL Divergence</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="content">
+            <h1 id="introduction">Mathematical Prerequisites for Reinforcement Learning</h1>
+
+            <p>This comprehensive tutorial covers the mathematical foundations necessary for understanding modern reinforcement learning. We assume familiarity with undergraduate-level mathematics and provide rigorous derivations and proofs throughout.</p>
+
+            <h2 id="linear-algebra">1. Linear Algebra</h2>
+
+            <h3 id="vectors-matrices">1.1 Vectors and Matrices</h3>
+
+            <div class="definition">
+                <h4>Definition 1.1: Vector Space</h4>
+                A vector space $V$ over a field $\mathbb{F}$ (typically $\mathbb{R}$ or $\mathbb{C}$) is a set equipped with two operations:
+                <ul>
+                    <li>Vector addition: $+: V \times V \to V$</li>
+                    <li>Scalar multiplication: $\cdot: \mathbb{F} \times V \to V$</li>
+                </ul>
+                satisfying eight axioms including associativity, commutativity, and distributivity.
+            </div>
+
+            <p>In reinforcement learning, we primarily work with finite-dimensional real vector spaces $\mathbb{R}^n$. State vectors, action vectors, and policy parameters all live in such spaces.</p>
+
+            <h4>Matrix Operations and Properties</h4>
+
+            <p>For matrices $A \in \mathbb{R}^{m \times n}$ and $B \in \mathbb{R}^{n \times p}$, the matrix product $C = AB$ is defined as:</p>
+
+            $$C_{ij} = \sum_{k=1}^{n} A_{ik}B_{kj}$$
+
+            <div class="theorem">
+                <h4>Theorem 1.1: Matrix Multiplication Properties</h4>
+                Matrix multiplication is:
+                <ul>
+                    <li>Associative: $(AB)C = A(BC)$</li>
+                    <li>Distributive: $A(B + C) = AB + AC$</li>
+                    <li>Generally not commutative: $AB \neq BA$</li>
+                </ul>
+            </div>
+
+            <p><strong>Proof:</strong> We prove associativity. Let $A \in \mathbb{R}^{m \times n}$, $B \in \mathbb{R}^{n \times p}$, and $C \in \mathbb{R}^{p \times q}$. The $(i,j)$-th entry of $(AB)C$ is:</p>
+
+            $$[(AB)C]_{ij} = \sum_{k=1}^{p} (AB)_{ik}C_{kj} = \sum_{k=1}^{p} \left(\sum_{\ell=1}^{n} A_{i\ell}B_{\ell k}\right)C_{kj}$$
+
+            $$= \sum_{k=1}^{p} \sum_{\ell=1}^{n} A_{i\ell}B_{\ell k}C_{kj} = \sum_{\ell=1}^{n} A_{i\ell} \sum_{k=1}^{p} B_{\ell k}C_{kj} = [A(BC)]_{ij}$$
+
+            <h4>Special Matrices in RL</h4>
+
+            <p>Several types of matrices are particularly important in reinforcement learning:</p>
+
+            <ul>
+                <li><strong>Transition matrices:</strong> Row-stochastic matrices where each row sums to 1</li>
+                <li><strong>Q-matrices:</strong> Action-value matrices $Q \in \mathbb{R}^{|S| \times |A|}$</li>
+                <li><strong>Feature matrices:</strong> $\Phi \in \mathbb{R}^{|S| \times d}$ for linear function approximation</li>
+            </ul>
+
+            <div class="definition">
+                <h4>Definition 1.2: Stochastic Matrix</h4>
+                A matrix $P \in \mathbb{R}^{n \times n}$ is called row-stochastic if:
+                <ul>
+                    <li>$P_{ij} \geq 0$ for all $i,j$</li>
+                    <li>$\sum_{j=1}^{n} P_{ij} = 1$ for all $i$</li>
+                </ul>
+            </div>
+
+            <div class="exercise">
+                <h4>Exercise 1.1</h4>
+                Prove that the product of two row-stochastic matrices is row-stochastic. Show that the set of $n \times n$ row-stochastic matrices forms a monoid under matrix multiplication.
+            </div>
+
+            <h3 id="eigenvalues">1.2 Eigenvalues and Eigenvectors</h3>
+
+            <div class="definition">
+                <h4>Definition 1.3: Eigenvalues and Eigenvectors</h4>
+                For a matrix $A \in \mathbb{R}^{n \times n}$, a scalar $\lambda \in \mathbb{C}$ is an eigenvalue with corresponding eigenvector $v \in \mathbb{C}^n \setminus \{0\}$ if:
+                $$Av = \lambda v$$
+            </div>
+
+            <p>The characteristic polynomial of $A$ is $p(\lambda) = \det(A - \lambda I)$, and eigenvalues are its roots.</p>
+
+            <div class="theorem">
+                <h4>Theorem 1.2: Perron-Frobenius Theorem (Simplified)</h4>
+                If $A$ is a primitive stochastic matrix (irreducible and aperiodic), then:
+                <ul>
+                    <li>$\lambda = 1$ is the largest eigenvalue in magnitude</li>
+                    <li>The corresponding eigenvector has all positive entries</li>
+                    <li>This eigenvalue has algebraic and geometric multiplicity 1</li>
+                </ul>
+            </div>
+
+            <p>This theorem is crucial for understanding the convergence of Markov chains in RL, as it guarantees the existence of a unique stationary distribution.</p>
+
+            <div class="example">
+                <h4>Example 1.1: Eigendecomposition of a Transition Matrix</h4>
+                Consider the transition matrix:
+                $$P = \begin{pmatrix} 0.7 & 0.3 \\ 0.4 & 0.6 \end{pmatrix}$$
+                
+                The characteristic polynomial is:
+                $$\det(P - \lambda I) = (0.7 - \lambda)(0.6 - \lambda) - 0.12 = \lambda^2 - 1.3\lambda + 0.3$$
+                
+                Solving: $\lambda_1 = 1, \lambda_2 = 0.3$
+                
+                The stationary distribution corresponds to $\lambda_1 = 1$:
+                $$(P - I)v = 0 \Rightarrow v = \begin{pmatrix} 4/7 \\ 3/7 \end{pmatrix}$$
+            </div>
+
+            <h3 id="matrix-decomposition">1.3 Matrix Decomposition</h3>
+
+            <h4>Singular Value Decomposition (SVD)</h4>
+
+            <div class="theorem">
+                <h4>Theorem 1.3: Singular Value Decomposition</h4>
+                Every matrix $A \in \mathbb{R}^{m \times n}$ can be decomposed as:
+                $$A = U\Sigma V^T$$
+                where $U \in \mathbb{R}^{m \times m}$ and $V \in \mathbb{R}^{n \times n}$ are orthogonal matrices, and $\Sigma \in \mathbb{R}^{m \times n}$ is diagonal with non-negative entries.
+            </div>
+
+            <p>The diagonal entries $\sigma_1 \geq \sigma_2 \geq \cdots \geq \sigma_r > 0$ are called singular values, where $r = \text{rank}(A)$.</p>
+
+            <p><strong>Applications in RL:</strong></p>
+            <ul>
+                <li>Dimensionality reduction of state spaces</li>
+                <li>Regularization in function approximation</li>
+                <li>Analysis of value function approximation error</li>
+            </ul>
+
+            <h4>Eigendecomposition for Symmetric Matrices</h4>
+
+            <div class="theorem">
+                <h4>Theorem 1.4: Spectral Theorem</h4>
+                If $A \in \mathbb{R}^{n \times n}$ is symmetric, then $A$ has a complete set of orthonormal eigenvectors, and:
+                $$A = Q\Lambda Q^T$$
+                where $Q$ is orthogonal and $\Lambda$ is diagonal with real eigenvalues.
+            </div>
+
+            <div class="exercise">
+                <h4>Exercise 1.2</h4>
+                Show that for a symmetric positive semi-definite matrix $A$, all eigenvalues are non-negative. Prove that $A$ can be written as $A = B^TB$ for some matrix $B$.
+            </div>
+
+            <h3 id="norms-metrics">1.4 Norms and Metrics</h3>
+
+            <div class="definition">
+                <h4>Definition 1.4: Vector Norm</h4>
+                A function $\|\cdot\|: \mathbb{R}^n \to \mathbb{R}$ is a norm if it satisfies:
+                <ul>
+                    <li>$\|x\| \geq 0$ with equality iff $x = 0$</li>
+                    <li>$\|\alpha x\| = |\alpha|\|x\|$ for all $\alpha \in \mathbb{R}$</li>
+                    <li>$\|x + y\| \leq \|x\| + \|y\|$ (triangle inequality)</li>
+                </ul>
+            </div>
+
+            <p>Common norms in RL include:</p>
+            <ul>
+                <li>$L^1$ norm: $\|x\|_1 = \sum_{i=1}^n |x_i|$</li>
+                <li>$L^2$ norm: $\|x\|_2 = \sqrt{\sum_{i=1}^n x_i^2}$</li>
+                <li>$L^\infty$ norm: $\|x\|_\infty = \max_{i} |x_i|$</li>
+            </ul>
+
+            <div class="theorem">
+                <h4>Theorem 1.5: Norm Equivalence</h4>
+                In finite dimensions, all norms are equivalent. Specifically, for any two norms $\|\cdot\|_a$ and $\|\cdot\|_b$ on $\mathbb{R}^n$, there exist constants $c, C > 0$ such that:
+                $$c\|x\|_a \leq \|x\|_b \leq C\|x\|_a$$
+                for all $x \in \mathbb{R}^n$.
+            </div>
+
+            <div class="section-summary">
+                <h4>Section 1 Summary</h4>
+                We've covered the linear algebra foundations essential for RL:
+                <ul>
+                    <li>Vector spaces and matrix operations form the basis for state and action representations</li>
+                    <li>Eigenanalysis is crucial for understanding Markov chain convergence</li>
+                    <li>Matrix decompositions enable dimensionality reduction and function approximation</li>
+                    <li>Norms provide metrics for measuring approximation quality</li>
+                </ul>
+            </div>
+
+            <h2 id="probability">2. Probability Theory</h2>
+
+            <h3 id="basic-probability">2.1 Basic Probability</h3>
+
+            <div class="definition">
+                <h4>Definition 2.1: Probability Space</h4>
+                A probability space is a triple $(\Omega, \mathcal{F}, P)$ where:
+                <ul>
+                    <li>$\Omega$ is the sample space</li>
+                    <li>$\mathcal{F}$ is a $\sigma$-algebra of events</li>
+                    <li>$P: \mathcal{F} \to [0,1]$ is a probability measure</li>
+                </ul>
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 2.1: Kolmogorov Axioms</h4>
+                A probability measure $P$ satisfies:
+                <ol>
+                    <li>$P(A) \geq 0$ for all $A \in \mathcal{F}$</li>
+                    <li>$P(\Omega) = 1$</li>
+                    <li>For countable disjoint events $A_1, A_2, \ldots$:
+                        $$P\left(\bigcup_{i=1}^\infty A_i\right) = \sum_{i=1}^\infty P(A_i)$$</li>
+                </ol>
+            </div>
+
+            <h3 id="random-variables">2.2 Random Variables</h3>
+
+            <div class="definition">
+                <h4>Definition 2.2: Random Variable</h4>
+                A random variable is a measurable function $X: \Omega \to \mathbb{R}$. The distribution function is:
+                $$F_X(x) = P(X \leq x)$$
+            </div>
+
+            <h4>Expectation and Variance</h4>
+
+            <div class="definition">
+                <h4>Definition 2.3: Expectation</h4>
+                For a discrete random variable $X$ with pmf $p(x)$:
+                $$\mathbb{E}[X] = \sum_x x \cdot p(x)$$
+                For a continuous random variable with pdf $f(x)$:
+                $$\mathbb{E}[X] = \int_{-\infty}^{\infty} x f(x) dx$$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 2.2: Linearity of Expectation</h4>
+                For random variables $X, Y$ and constants $a, b$:
+                $$\mathbb{E}[aX + bY] = a\mathbb{E}[X] + b\mathbb{E}[Y]$$
+                This holds even if $X$ and $Y$ are dependent.
+            </div>
+
+            <div class="definition">
+                <h4>Definition 2.4: Variance</h4>
+                $$\text{Var}(X) = \mathbb{E}[(X - \mathbb{E}[X])^2] = \mathbb{E}[X^2] - (\mathbb{E}[X])^2$$
+            </div>
+
+            <h3 id="distributions">2.3 Probability Distributions</h3>
+
+            <h4>Key Distributions in RL</h4>
+
+            <p><strong>Bernoulli Distribution:</strong> Models binary outcomes (e.g., success/failure in bandit problems)</p>
+            $$P(X = 1) = p, \quad P(X = 0) = 1-p$$
+            $$\mathbb{E}[X] = p, \quad \text{Var}(X) = p(1-p)$$
+
+            <p><strong>Categorical Distribution:</strong> Generalizes Bernoulli to multiple outcomes (policy distributions)</p>
+            $$P(X = k) = p_k, \quad \sum_{k=1}^n p_k = 1$$
+
+            <p><strong>Normal Distribution:</strong> Continuous approximation for many RL scenarios</p>
+            $$f(x) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left(-\frac{(x-\mu)^2}{2\sigma^2}\right)$$
+
+            <div class="theorem">
+                <h4>Theorem 2.3: Central Limit Theorem</h4>
+                Let $X_1, X_2, \ldots$ be iid random variables with $\mathbb{E}[X_i] = \mu$ and $\text{Var}(X_i) = \sigma^2 < \infty$. Then:
+                $$\frac{\bar{X}_n - \mu}{\sigma/\sqrt{n}} \xrightarrow{d} N(0,1)$$
+                where $\bar{X}_n = \frac{1}{n}\sum_{i=1}^n X_i$.
+            </div>
+
+            <p>This theorem justifies normal approximations for returns in RL when averaging over many episodes.</p>
+
+            <h3 id="conditional-probability">2.4 Conditional Probability</h3>
+
+            <div class="definition">
+                <h4>Definition 2.5: Conditional Probability</h4>
+                Given events $A, B$ with $P(B) > 0$:
+                $$P(A|B) = \frac{P(A \cap B)}{P(B)}$$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 2.4: Bayes' Theorem</h4>
+                $$P(A|B) = \frac{P(B|A)P(A)}{P(B)}$$
+                More generally, for a partition $\{A_i\}$:
+                $$P(A_j|B) = \frac{P(B|A_j)P(A_j)}{\sum_i P(B|A_i)P(A_i)}$$
+            </div>
+
+            <p>Bayes' theorem is fundamental in Bayesian RL for updating beliefs about environment parameters.</p>
+
+            <h4>Independence</h4>
+
+            <div class="definition">
+                <h4>Definition 2.6: Independence</h4>
+                Events $A$ and $B$ are independent if $P(A \cap B) = P(A)P(B)$, equivalently $P(A|B) = P(A)$.
+                Random variables $X$ and $Y$ are independent if their joint pdf factors:
+                $$f_{X,Y}(x,y) = f_X(x)f_Y(y)$$
+            </div>
+
+            <div class="exercise">
+                <h4>Exercise 2.1</h4>
+                In a multi-armed bandit with arms $\{1,2,\ldots,K\}$, suppose arm $i$ has Bernoulli reward with parameter $\theta_i$. If we place a Beta$(a,b)$ prior on each $\theta_i$, derive the posterior distribution after observing $s_i$ successes and $f_i$ failures for arm $i$.
+            </div>
+
+            <h3 id="markov-chains">2.5 Markov Chains</h3>
+
+            <div class="definition">
+                <h4>Definition 2.7: Markov Property</h4>
+                A stochastic process $\{X_t\}_{t \geq 0}$ satisfies the Markov property if:
+                $$P(X_{t+1} = j | X_t = i, X_{t-1} = i_{t-1}, \ldots, X_0 = i_0) = P(X_{t+1} = j | X_t = i)$$
+            </div>
+
+            <p>For a time-homogeneous Markov chain, the transition probabilities are constant:</p>
+            $$P_{ij} = P(X_{t+1} = j | X_t = i)$$
+
+            <div class="definition">
+                <h4>Definition 2.8: Stationary Distribution</h4>
+                A distribution $\pi$ is stationary for transition matrix $P$ if:
+                $$\pi^T P = \pi^T$$
+                or equivalently, $\pi$ is a left eigenvector of $P$ with eigenvalue 1.
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 2.5: Fundamental Theorem of Markov Chains</h4>
+                For an irreducible, finite Markov chain:
+                <ol>
+                    <li>A unique stationary distribution $\pi$ exists</li>
+                    <li>$\lim_{t \to \infty} P^t_{ij} = \pi_j$ for all $i,j$</li>
+                    <li>$\pi_j = \frac{1}{\mathbb{E}_j[\tau_j]}$ where $\tau_j$ is the return time to state $j$</li>
+                </ol>
+            </div>
+
+            <h4>Convergence Analysis</h4>
+
+            <p>The rate of convergence depends on the second-largest eigenvalue in magnitude. For a transition matrix $P$ with eigenvalues $1 = |\lambda_1| > |\lambda_2| \geq \cdots \geq |\lambda_n|$:</p>
+
+            $$\|P^t_{ij} - \pi_j\| \leq C|\lambda_2|^t$$
+
+            <p>This geometric convergence rate is crucial for analyzing policy evaluation in RL algorithms.</p>
+
+            <div class="example">
+                <h4>Example 2.1: Random Walk on a Graph</h4>
+                Consider a random walk on a connected graph $G = (V,E)$ with transition probabilities:
+                $$P_{ij} = \begin{cases}
+                \frac{1}{d_i} & \text{if } (i,j) \in E \\
+                0 & \text{otherwise}
+                \end{cases}$$
+                where $d_i$ is the degree of vertex $i$.
+                
+                The stationary distribution is:
+                $$\pi_i = \frac{d_i}{2|E|}$$
+            </div>
+
+            <div class="exercise">
+                <h4>Exercise 2.2</h4>
+                Prove that the random walk in Example 2.1 has the claimed stationary distribution. Show that for a regular graph (all vertices have the same degree), the stationary distribution is uniform.
+            </div>
+
+            <div class="section-summary">
+                <h4>Section 2 Summary</h4>
+                Probability theory provides the mathematical foundation for uncertainty in RL:
+                <ul>
+                    <li>Random variables model stochastic rewards and transitions</li>
+                    <li>Conditional probability enables policy definitions and Bayesian updates</li>
+                    <li>Markov chains model the sequential decision process</li>
+                    <li>Convergence analysis guides algorithm design</li>
+                </ul>
+            </div>
+
+            <h2 id="calculus">3. Calculus and Optimization</h2>
+
+            <h3 id="multivariable-calculus">3.1 Multivariable Calculus</h3>
+
+            <h4>Partial Derivatives and Gradients</h4>
+
+            <div class="definition">
+                <h4>Definition 3.1: Partial Derivative</h4>
+                For a function $f: \mathbb{R}^n \to \mathbb{R}$, the partial derivative with respect to $x_i$ is:
+                $\frac{\partial f}{\partial x_i} = \lim_{h \to 0} \frac{f(x_1, \ldots, x_i + h, \ldots, x_n) - f(x_1, \ldots, x_n)}{h}$
+            </div>
+
+            <div class="definition">
+                <h4>Definition 3.2: Gradient</h4>
+                The gradient of $f$ is the vector of partial derivatives:
+                $\nabla f(x) = \begin{pmatrix}
+                \frac{\partial f}{\partial x_1} \\
+                \vdots \\
+                \frac{\partial f}{\partial x_n}
+                \end{pmatrix}$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 3.1: Chain Rule (Multivariable)</h4>
+                If $f: \mathbb{R}^m \to \mathbb{R}$ and $g: \mathbb{R}^n \to \mathbb{R}^m$, then for $h = f \circ g$:
+                $\frac{\partial h}{\partial x_j} = \sum_{i=1}^m \frac{\partial f}{\partial y_i} \frac{\partial g_i}{\partial x_j}$
+                In vector form: $\nabla h = J_g^T \nabla f$ where $J_g$ is the Jacobian of $g$.
+            </div>
+
+            <p>This is essential for backpropagation in neural network-based RL algorithms.</p>
+
+            <h4>Taylor Series and Approximation</h4>
+
+            <div class="theorem">
+                <h4>Theorem 3.2: Taylor's Theorem (Multivariable)</h4>
+                For a twice-differentiable function $f: \mathbb{R}^n \to \mathbb{R}$:
+                $f(x + h) = f(x) + \nabla f(x)^T h + \frac{1}{2} h^T \nabla^2 f(x) h + o(\|h\|^2)$
+                where $\nabla^2 f(x)$ is the Hessian matrix.
+            </div>
+
+            <div class="definition">
+                <h4>Definition 3.3: Hessian Matrix</h4>
+                The Hessian is the matrix of second partial derivatives:
+                $[\nabla^2 f(x)]_{ij} = \frac{\partial^2 f}{\partial x_i \partial x_j}$
+            </div>
+
+            <div class="example">
+                <h4>Example 3.1: Quadratic Function Analysis</h4>
+                Consider the quadratic function $f(x) = \frac{1}{2}x^T A x - b^T x + c$ where $A$ is symmetric.
+                
+                Then:
+                $\nabla f(x) = Ax - b$
+                $\nabla^2 f(x) = A$
+                
+                The critical point satisfies $Ax^* = b$, so $x^* = A^{-1}b$ (if $A$ is invertible).
+                If $A \succ 0$, this is a global minimum.
+            </div>
+
+            <h3 id="optimization">3.2 Optimization Theory</h3>
+
+            <h4>Unconstrained Optimization</h4>
+
+            <div class="theorem">
+                <h4>Theorem 3.3: First-Order Necessary Condition</h4>
+                If $x^*$ is a local minimum of $f: \mathbb{R}^n \to \mathbb{R}$ and $f$ is differentiable at $x^*$, then:
+                $\nabla f(x^*) = 0$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 3.4: Second-Order Conditions</h4>
+                Let $f$ be twice differentiable at $x^*$ with $\nabla f(x^*) = 0$.
+                <ul>
+                    <li>If $\nabla^2 f(x^*) \succ 0$, then $x^*$ is a strict local minimum</li>
+                    <li>If $\nabla^2 f(x^*) \prec 0$, then $x^*$ is a strict local maximum</li>
+                    <li>If $\nabla^2 f(x^*)$ is indefinite, then $x^*$ is a saddle point</li>
+                </ul>
+            </div>
+
+            <h4>Convex Optimization</h4>
+
+            <div class="definition">
+                <h4>Definition 3.4: Convex Function</h4>
+                A function $f: \mathbb{R}^n \to \mathbb{R}$ is convex if for all $x, y \in \mathbb{R}^n$ and $\lambda \in [0,1]$:
+                $f(\lambda x + (1-\lambda)y) \leq \lambda f(x) + (1-\lambda) f(y)$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 3.5: Characterization of Convexity</h4>
+                For a twice-differentiable function $f$, the following are equivalent:
+                <ol>
+                    <li>$f$ is convex</li>
+                    <li>$\nabla^2 f(x) \succeq 0$ for all $x$</li>
+                    <li>$f(y) \geq f(x) + \nabla f(x)^T (y - x)$ for all $x, y$</li>
+                </ol>
+            </div>
+
+            <p>Convex functions have the crucial property that any local minimum is global, making optimization much more tractable.</p>
+
+            <div class="theorem">
+                <h4>Theorem 3.6: Global Optimality for Convex Functions</h4>
+                If $f$ is convex and $\nabla f(x^*) = 0$, then $x^*$ is a global minimum.
+            </div>
+
+            <h3 id="lagrange-multipliers">3.3 Lagrange Multipliers</h3>
+
+            <p>Many RL problems involve constrained optimization, such as policy optimization subject to trust region constraints or budget limitations.</p>
+
+            <div class="theorem">
+                <h4>Theorem 3.7: Method of Lagrange Multipliers</h4>
+                Consider the problem:
+                $\min_{x \in \mathbb{R}^n} f(x) \quad \text{subject to} \quad g_i(x) = 0, \; i = 1, \ldots, m$
+                
+                If $x^*$ is a local optimum and the constraint gradients $\{\nabla g_i(x^*)\}$ are linearly independent, then there exist multipliers $\lambda_1, \ldots, \lambda_m$ such that:
+                $\nabla f(x^*) + \sum_{i=1}^m \lambda_i \nabla g_i(x^*) = 0$
+            </div>
+
+            <div class="definition">
+                <h4>Definition 3.5: Lagrangian</h4>
+                The Lagrangian function is:
+                $\mathcal{L}(x, \lambda) = f(x) + \sum_{i=1}^m \lambda_i g_i(x)$
+                Critical points satisfy $\nabla_x \mathcal{L} = 0$ and $\nabla_\lambda \mathcal{L} = 0$.
+            </div>
+
+            <h4>Karush-Kuhn-Tucker (KKT) Conditions</h4>
+
+            <p>For inequality constraints, we need the more general KKT conditions:</p>
+
+            <div class="theorem">
+                <h4>Theorem 3.8: KKT Conditions</h4>
+                Consider:
+                $\min f(x) \quad \text{subject to} \quad g_i(x) \leq 0, \; h_j(x) = 0$
+                
+                If $x^*$ is optimal and constraint qualifications hold, then there exist $\lambda_i \geq 0, \mu_j$ such that:
+                <ol>
+                    <li>$\nabla f(x^*) + \sum_i \lambda_i \nabla g_i(x^*) + \sum_j \mu_j \nabla h_j(x^*) = 0$</li>
+                    <li>$g_i(x^*) \leq 0, h_j(x^*) = 0$ (feasibility)</li>
+                    <li>$\lambda_i \geq 0$ (dual feasibility)</li>
+                    <li>$\lambda_i g_i(x^*) = 0$ (complementary slackness)</li>
+                </ol>
+            </div>
+
+            <div class="exercise">
+                <h4>Exercise 3.1</h4>
+                In portfolio optimization for multi-armed bandits, consider maximizing expected reward $\sum_{i=1}^K w_i \mu_i$ subject to $\sum_{i=1}^K w_i = 1$ and $w_i \geq 0$, where $w_i$ is the probability of selecting arm $i$. Use Lagrange multipliers to find the optimal solution when you know the true means $\mu_i$.
+            </div>
+
+            <h3 id="gradient-methods">3.4 Gradient Methods</h3>
+
+            <h4>Gradient Descent</h4>
+
+            <p>The fundamental algorithm for unconstrained optimization:</p>
+
+            $x_{k+1} = x_k - \alpha_k \nabla f(x_k)$
+
+            <div class="theorem">
+                <h4>Theorem 3.9: Convergence of Gradient Descent</h4>
+                Assume $f$ is $L$-smooth (Lipschitz gradient) and $\mu$-strongly convex. With step size $\alpha \leq \frac{2}{\mu + L}$:
+                $f(x_k) - f^* \leq \left(\frac{L - \mu}{L + \mu}\right)^k (f(x_0) - f^*)$
+                
+                The convergence rate is $O(\kappa^k)$ where $\kappa = \frac{L}{\mu}$ is the condition number.
+            </div>
+
+            <p><strong>Proof Sketch:</strong> Using the smoothness and strong convexity assumptions, we can bound the progress at each iteration. The key insight is that the gradient points in the direction of steepest decrease, and the Lipschitz condition ensures we don't overshoot.</p>
+
+            <h4>Stochastic Gradient Descent</h4>
+
+            <p>In RL, we often work with stochastic objectives. Consider minimizing $f(x) = \mathbb{E}[F(x, \xi)]$ where $\xi$ is random:</p>
+
+            $x_{k+1} = x_k - \alpha_k \nabla F(x_k, \xi_k)$
+
+            <div class="theorem">
+                <h4>Theorem 3.10: SGD Convergence</h4>
+                Under appropriate conditions (unbiased gradients, bounded variance, diminishing step sizes), SGD converges to the optimal solution:
+                $\lim_{k \to \infty} \mathbb{E}[\|x_k - x^*\|^2] = 0$
+                provided $\sum_k \alpha_k = \infty$ and $\sum_k \alpha_k^2 < \infty$.
+            </div>
+
+            <h4>Natural Gradient</h4>
+
+            <p>In policy gradient methods, the natural gradient accounts for the geometry of the policy space:</p>
+
+            <div class="definition">
+                <h4>Definition 3.6: Natural Gradient</h4>
+                The natural gradient is:
+                $\tilde{\nabla}_\theta J(\theta) = G(\theta)^{-1} \nabla_\theta J(\theta)$
+                where $G(\theta)$ is the Fisher Information Matrix:
+                $G(\theta) = \mathbb{E}\left[\nabla_\theta \log \pi(a|s;\theta) \nabla_\theta \log \pi(a|s;\theta)^T\right]$
+            </div>
+
+            <p>This provides a more principled update direction that's invariant to reparametrization of the policy.</p>
+
+            <div class="example">
+                <h4>Example 3.2: Policy Gradient for Softmax Policy</h4>
+                Consider a softmax policy $\pi(a|s;\theta) = \frac{\exp(\theta^T \phi(s,a))}{\sum_{a'} \exp(\theta^T \phi(s,a'))}$.
+                
+                The score function is:
+                $\nabla_\theta \log \pi(a|s;\theta) = \phi(s,a) - \mathbb{E}_{\pi}[\phi(s,\cdot)]$
+                
+                The policy gradient theorem gives:
+                $\nabla_\theta J(\theta) = \mathbb{E}\left[Q^\pi(s,a) \nabla_\theta \log \pi(a|s;\theta)\right]$
+            </div>
+
+            <div class="exercise">
+                <h4>Exercise 3.2</h4>
+                Derive the Fisher Information Matrix for the softmax policy in Example 3.2. Show that the natural gradient update has the form of a weighted least squares problem.
+            </div>
+
+            <div class="section-summary">
+                <h4>Section 3 Summary</h4>
+                Calculus and optimization provide the tools for learning in RL:
+                <ul>
+                    <li>Gradients enable policy improvement and value function updates</li>
+                    <li>Convex optimization guarantees global solutions when applicable</li>
+                    <li>Constrained optimization handles policy constraints and regularization</li>
+                    <li>Stochastic methods adapt to the inherent randomness in RL</li>
+                </ul>
+            </div>
+
+            <h2 id="dynamic-programming">4. Dynamic Programming</h2>
+
+            <p>Dynamic programming forms the theoretical foundation of reinforcement learning, providing the mathematical framework for sequential decision making under uncertainty.</p>
+
+            <h3 id="bellman-equations">4.1 Bellman Equations</h3>
+
+            <div class="definition">
+                <h4>Definition 4.1: Value Functions</h4>
+                For a policy $\pi$ and discount factor $\gamma \in [0,1)$:
+                <ul>
+                    <li>State value function: $V^\pi(s) = \mathbb{E}_\pi\left[\sum_{t=0}^\infty \gamma^t R_{t+1} \mid S_0 = s\right]$</li>
+                    <li>Action value function: $Q^\pi(s,a) = \mathbb{E}_\pi\left[\sum_{t=0}^\infty \gamma^t R_{t+1} \mid S_0 = s, A_0 = a\right]$</li>
+                </ul>
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 4.1: Bellman Equations</h4>
+                The value functions satisfy the recursive relations:
+                $V^\pi(s) = \sum_a \pi(a|s) \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V^\pi(s')]$
+                $Q^\pi(s,a) = \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma \sum_{a'} \pi(a'|s') Q^\pi(s',a')]$
+            </div>
+
+            <p><strong>Proof:</strong> We prove the first equation. By definition:
+            $V^\pi(s) = \mathbb{E}_\pi\left[R_1 + \gamma \sum_{t=1}^\infty \gamma^{t-1} R_{t+1} \mid S_0 = s\right]$
+            
+            Using the law of total expectation conditioning on $A_0$ and $S_1$:
+            $V^\pi(s) = \sum_a \pi(a|s) \sum_{s'} P(s'|s,a) \mathbb{E}_\pi[R_1 + \gamma V^\pi(S_1) \mid S_0 = s, A_0 = a, S_1 = s']$
+            $= \sum_a \pi(a|s) \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V^\pi(s')]$</p>
+
+            <h4>Optimal Value Functions</h4>
+
+            <div class="definition">
+                <h4>Definition 4.2: Optimal Value Functions</h4>
+                $V^*(s) = \max_\pi V^\pi(s), \quad Q^*(s,a) = \max_\pi Q^\pi(s,a)$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 4.2: Bellman Optimality Equations</h4>
+                $V^*(s) = \max_a \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V^*(s')]$
+                $Q^*(s,a) = \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma \max_{a'} Q^*(s',a')]$
+            </div>
+
+            <p>These nonlinear equations uniquely determine the optimal value functions.</p>
+
+            <h4>Existence and Uniqueness</h4>
+
+            <div class="theorem">
+                <h4>Theorem 4.3: Existence of Optimal Policy</h4>
+                For finite MDPs, there exists a deterministic stationary policy $\pi^*$ that is optimal, i.e., $V^{\pi^*}(s) = V^*(s)$ for all $s$.
+            </div>
+
+            <p><strong>Proof Sketch:</strong> The proof uses the compactness of the policy space and continuity arguments. The key insight is that the Bellman operator is a contraction mapping.</p>
+
+            <h3 id="value-iteration">4.2 Value Iteration</h3>
+
+            <p>Value iteration is an algorithm to compute optimal value functions by iteratively applying the Bellman optimality operator.</p>
+
+            <div class="definition">
+                <h4>Definition 4.3: Bellman Optimality Operator</h4>
+                For value function $V: S \to \mathbb{R}$, define:
+                $[T^*V](s) = \max_a \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V(s')]$
+            </div>
+
+            <p>The value iteration algorithm is:
+            $V_{k+1} = T^* V_k$
+            starting from any initial $V_0$.</p>
+
+            <div class="theorem">
+                <h4>Theorem 4.4: Contraction Property</h4>
+                The Bellman optimality operator $T^*$ is a $\gamma$-contraction in the supremum norm:
+                $\|T^* V - T^* U\|_\infty \leq \gamma \|V - U\|_\infty$
+            </div>
+
+            <p><strong>Proof:</strong> For any state $s$:
+            $|[T^*V](s) - [T^*U](s)| = \left|\max_a \sum_{s'} P(s'|s,a)\gamma[V(s') - U(s')] - \max_a \sum_{s'} P(s'|s,a)\gamma[V(s') - U(s')]\right|$
+            
+            Using the property $|\max_i x_i - \max_i y_i| \leq \max_i |x_i - y_i|$:
+            $\leq \max_a \left|\sum_{s'} P(s'|s,a)\gamma[V(s') - U(s')]\right| \leq \gamma \max_{s'} |V(s') - U(s')| = \gamma \|V - U\|_\infty$</p>
+
+            <div class="theorem">
+                <h4>Theorem 4.5: Convergence of Value Iteration</h4>
+                The value iteration sequence converges to $V^*$:
+                $\lim_{k \to \infty} V_k = V^*$
+                with geometric convergence rate:
+                $\|V_k - V^*\|_\infty \leq \gamma^k \|V_0 - V^*\|_\infty$
+            </div>
+
+            <p>This follows immediately from the Banach Fixed Point Theorem since $T^*$ is a contraction mapping on the complete metric space of bounded functions.</p>
+
+            <div class="example">
+                <h4>Example 4.1: Simple Grid World</h4>
+                Consider a $2 \times 2$ grid world with states $\{1,2,3,4\}$ arranged as:
+                $\begin{array}{|c|c|}
+                \hline
+                1 & 2 \\
+                \hline
+                3 & 4 \\
+                \hline
+                \end{array}$
+                
+                Actions are $\{\text{up, down, left, right}\}$ with deterministic transitions. Rewards are $R(s,a,s') = -1$ except $R(4,\cdot,4) = 0$ (terminal state).
+                
+                Value iteration converges to:
+                $V^* = \begin{pmatrix} -3 \\ -2 \\ -2 \\ 0 \end{pmatrix}$
+            </div>
+
+            <h3 id="policy-iteration">4.3 Policy Iteration</h3>
+
+            <p>Policy iteration alternates between policy evaluation and policy improvement.</p>
+
+            <h4>Policy Evaluation</h4>
+
+            <p>Given policy $\pi$, solve the linear system:
+            $V^\pi = T^\pi V^\pi$
+            where $[T^\pi V](s) = \sum_a \pi(a|s) \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V(s')]$.</p>
+
+            <div class="theorem">
+                <h4>Theorem 4.6: Policy Evaluation Convergence</h4>
+                The operator $T^\pi$ is a $\gamma$-contraction, so iterating:
+                $V_{k+1} = T^\pi V_k$
+                converges to $V^\pi$ with rate $O(\gamma^k)$.
+            </div>
+
+            <h4>Policy Improvement</h4>
+
+            <p>Given $V^\pi$, define the improved policy:
+            $\pi'(s) = \arg\max_a \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V^\pi(s')]$</p>
+
+            <div class="theorem">
+                <h4>Theorem 4.7: Policy Improvement Theorem</h4>
+                If $V^\pi(s) \leq Q^\pi(s, \pi'(s))$ for all $s$, then $V^{\pi'}(s) \geq V^\pi(s)$ for all $s$.
+                If the inequality is strict for at least one state, then $V^{\pi'}(s) > V^\pi(s)$ for at least one state.
+            </div>
+
+            <p><strong>Proof:</strong> We have:
+            $V^\pi(s) \leq Q^\pi(s, \pi'(s)) = \mathbb{E}[R_1 + \gamma V^\pi(S_1) \mid S_0 = s, A_0 = \pi'(s)]$
+            
+            Applying $\pi'$ for the second step:
+            $\leq \mathbb{E}[R_1 + \gamma Q^\pi(S_1, \pi'(S_1)) \mid S_0 = s, A_0 = \pi'(s)]$
+            $= \mathbb{E}[R_1 + \gamma R_2 + \gamma^2 V^\pi(S_2) \mid S_0 = s, \text{following } \pi']$
+            
+            Continuing this argument:
+            $\leq \mathbb{E}\left[\sum_{t=0}^\infty \gamma^t R_{t+1} \mid S_0 = s, \text{following } \pi'\right] = V^{\pi'}(s)$</p>
+
+            <div class="theorem">
+                <h4>Theorem 4.8: Policy Iteration Convergence</h4>
+                Policy iteration converges to the optimal policy $\pi^*$ in finitely many steps for finite MDPs.
+            </div>
+
+            <p>The proof relies on the fact that each policy improvement step strictly increases the value function unless the current policy is already optimal, and there are only finitely many deterministic policies.</p>
+
+            <h4>Modified Policy Iteration</h4>
+
+            <p>To reduce computational cost, we can perform incomplete policy evaluation:</p>
+            <ul>
+                <li>Perform $m$ steps of policy evaluation instead of full convergence</li>
+                <li>As $m \to \infty$, this reduces to standard policy iteration</li>
+                <li>As $m = 1$, this becomes value iteration</li>
+            </ul>
+
+            <div class="exercise">
+                <h4>Exercise 4.1</h4>
+                Prove that value iteration is equivalent to policy iteration with a single step of policy evaluation. Specifically, show that if $V_k$ is the value function after $k$ iterations of value iteration, then the greedy policy with respect to $V_k$ followed by one step of policy evaluation yields $V_{k+1}$.
+            </div>
+
+            <h4>Generalized Policy Iteration</h4>
+
+            <p>The general framework that encompasses most RL algorithms:</p>
+
+            <div class="definition">
+                <h4>Definition 4.4: Generalized Policy Iteration</h4>
+                Any algorithm that maintains estimates of both value functions and policies, where:
+                <ul>
+                    <li>The value function approximates the value of the current policy</li>
+                    <li>The policy is improved with respect to the current value function</li>
+                </ul>
+            </div>
+
+            <p>This framework includes temporal difference learning, Q-learning, actor-critic methods, and many others.</p>
+
+            <div class="section-summary">
+                <h4>Section 4 Summary</h4>
+                Dynamic programming provides the mathematical foundation for RL:
+                <ul>
+                    <li>Bellman equations characterize optimal value functions</li>
+                    <li>Contraction mapping theory guarantees convergence</li>
+                    <li>Value and policy iteration provide computational algorithms</li>
+                    <li>Generalized policy iteration unifies most RL approaches</li>
+                </ul>
+            </div>
+
+            <h2 id="functional-analysis">5. Functional Analysis</h2>
+
+            <p>Functional analysis provides the mathematical framework for understanding convergence and approximation in infinite-dimensional spaces, crucial for function approximation in RL.</p>
+
+            <h3 id="metric-spaces">5.1 Metric Spaces</h3>
+
+            <div class="definition">
+                <h4>Definition 5.1: Metric Space</h4>
+                A metric space is a pair $(X, d)$ where $X$ is a set and $d: X \times X \to \mathbb{R}$ satisfies:
+                <ul>
+                    <li>$d(x, y) \geq 0$ with equality iff $x = y$</li>
+                    <li>$d(x, y) = d(y, x)$ (symmetry)</li>
+                    <li>$d(x, z) \leq d(x, y) + d(y, z)$ (triangle inequality)</li>
+                </ul>
+            </div>
+
+            <div class="example">
+                <h4>Example 5.1: Common Metrics in RL</h4>
+                <ul>
+                    <li>Supremum norm: $d(f, g) = \sup_{s \in S} |f(s) - g(s)|$</li>
+                    <li>$L^2$ norm: $d(f, g) = \sqrt{\int (f(s) - g(s))^2 \, d\mu(s)}$</li>
+                    <li>Wasserstein distance for probability distributions</li>
+                </ul>
+            </div>
+
+            <div class="definition">
+                <h4>Definition 5.2: Completeness</h4>
+                A metric space $(X, d)$ is complete if every Cauchy sequence converges to a point in $X$. A sequence $\{x_n\}$ is Cauchy if:
+                $\forall \epsilon > 0, \exists N : n, m \geq N \Rightarrow d(x_n, x_m) < \epsilon$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 5.1: Banach Fixed Point Theorem</h4>
+                Let $(X, d)$ be a complete metric space and $T: X \to X$ be a contraction mapping (i.e., $d(Tx, Ty) \leq \alpha d(x, y)$ for some $\alpha < 1$). Then:
+                <ol>
+                    <li>$T$ has a unique fixed point $x^* \in X$</li>
+                    <li>For any $x_0 \in X$, the sequence $x_{n+1} = Tx_n$ converges to $x^*$</li>
+                    <li>$d(x_n,, '
+</head>
+<body>
+    <div class="container">
+        <nav class="sidebar">
+            <h2>Contents</h2>
+            <ul>
+                <li><a href="#introduction">Introduction</a></li>
+                <li><a href="#linear-algebra">1. Linear Algebra</a>
+                    <ul class="subsection">
+                        <li><a href="#vectors-matrices">1.1 Vectors and Matrices</a></li>
+                        <li><a href="#eigenvalues">1.2 Eigenvalues and Eigenvectors</a></li>
+                        <li><a href="#matrix-decomposition">1.3 Matrix Decomposition</a></li>
+                        <li><a href="#norms-metrics">1.4 Norms and Metrics</a></li>
+                    </ul>
+                </li>
+                <li><a href="#probability">2. Probability Theory</a>
+                    <ul class="subsection">
+                        <li><a href="#basic-probability">2.1 Basic Probability</a></li>
+                        <li><a href="#random-variables">2.2 Random Variables</a></li>
+                        <li><a href="#distributions">2.3 Probability Distributions</a></li>
+                        <li><a href="#conditional-probability">2.4 Conditional Probability</a></li>
+                        <li><a href="#markov-chains">2.5 Markov Chains</a></li>
+                    </ul>
+                </li>
+                <li><a href="#calculus">3. Calculus and Optimization</a>
+                    <ul class="subsection">
+                        <li><a href="#multivariable-calculus">3.1 Multivariable Calculus</a></li>
+                        <li><a href="#optimization">3.2 Optimization Theory</a></li>
+                        <li><a href="#lagrange-multipliers">3.3 Lagrange Multipliers</a></li>
+                        <li><a href="#gradient-methods">3.4 Gradient Methods</a></li>
+                    </ul>
+                </li>
+                <li><a href="#dynamic-programming">4. Dynamic Programming</a>
+                    <ul class="subsection">
+                        <li><a href="#bellman-equations">4.1 Bellman Equations</a></li>
+                        <li><a href="#value-iteration">4.2 Value Iteration</a></li>
+                        <li><a href="#policy-iteration">4.3 Policy Iteration</a></li>
+                    </ul>
+                </li>
+                <li><a href="#functional-analysis">5. Functional Analysis</a>
+                    <ul class="subsection">
+                        <li><a href="#metric-spaces">5.1 Metric Spaces</a></li>
+                        <li><a href="#banach-spaces">5.2 Banach Spaces</a></li>
+                        <li><a href="#contraction-mapping">5.3 Contraction Mapping</a></li>
+                    </ul>
+                </li>
+                <li><a href="#information-theory">6. Information Theory</a>
+                    <ul class="subsection">
+                        <li><a href="#entropy">6.1 Entropy</a></li>
+                        <li><a href="#mutual-information">6.2 Mutual Information</a></li>
+                        <li><a href="#kl-divergence">6.3 KL Divergence</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="content">
+            <h1 id="introduction">Mathematical Prerequisites for Reinforcement Learning</h1>
+
+            <p>This comprehensive tutorial covers the mathematical foundations necessary for understanding modern reinforcement learning. We assume familiarity with undergraduate-level mathematics and provide rigorous derivations and proofs throughout.</p>
+
+            <h2 id="linear-algebra">1. Linear Algebra</h2>
+
+            <h3 id="vectors-matrices">1.1 Vectors and Matrices</h3>
+
+            <div class="definition">
+                <h4>Definition 1.1: Vector Space</h4>
+                A vector space $V$ over a field $\mathbb{F}$ (typically $\mathbb{R}$ or $\mathbb{C}$) is a set equipped with two operations:
+                <ul>
+                    <li>Vector addition: $+: V \times V \to V$</li>
+                    <li>Scalar multiplication: $\cdot: \mathbb{F} \times V \to V$</li>
+                </ul>
+                satisfying eight axioms including associativity, commutativity, and distributivity.
+            </div>
+
+            <p>In reinforcement learning, we primarily work with finite-dimensional real vector spaces $\mathbb{R}^n$. State vectors, action vectors, and policy parameters all live in such spaces.</p>
+
+            <h4>Matrix Operations and Properties</h4>
+
+            <p>For matrices $A \in \mathbb{R}^{m \times n}$ and $B \in \mathbb{R}^{n \times p}$, the matrix product $C = AB$ is defined as:</p>
+
+            $$C_{ij} = \sum_{k=1}^{n} A_{ik}B_{kj}$$
+
+            <div class="theorem">
+                <h4>Theorem 1.1: Matrix Multiplication Properties</h4>
+                Matrix multiplication is:
+                <ul>
+                    <li>Associative: $(AB)C = A(BC)$</li>
+                    <li>Distributive: $A(B + C) = AB + AC$</li>
+                    <li>Generally not commutative: $AB \neq BA$</li>
+                </ul>
+            </div>
+
+            <p><strong>Proof:</strong> We prove associativity. Let $A \in \mathbb{R}^{m \times n}$, $B \in \mathbb{R}^{n \times p}$, and $C \in \mathbb{R}^{p \times q}$. The $(i,j)$-th entry of $(AB)C$ is:</p>
+
+            $$[(AB)C]_{ij} = \sum_{k=1}^{p} (AB)_{ik}C_{kj} = \sum_{k=1}^{p} \left(\sum_{\ell=1}^{n} A_{i\ell}B_{\ell k}\right)C_{kj}$$
+
+            $$= \sum_{k=1}^{p} \sum_{\ell=1}^{n} A_{i\ell}B_{\ell k}C_{kj} = \sum_{\ell=1}^{n} A_{i\ell} \sum_{k=1}^{p} B_{\ell k}C_{kj} = [A(BC)]_{ij}$$
+
+            <h4>Special Matrices in RL</h4>
+
+            <p>Several types of matrices are particularly important in reinforcement learning:</p>
+
+            <ul>
+                <li><strong>Transition matrices:</strong> Row-stochastic matrices where each row sums to 1</li>
+                <li><strong>Q-matrices:</strong> Action-value matrices $Q \in \mathbb{R}^{|S| \times |A|}$</li>
+                <li><strong>Feature matrices:</strong> $\Phi \in \mathbb{R}^{|S| \times d}$ for linear function approximation</li>
+            </ul>
+
+            <div class="definition">
+                <h4>Definition 1.2: Stochastic Matrix</h4>
+                A matrix $P \in \mathbb{R}^{n \times n}$ is called row-stochastic if:
+                <ul>
+                    <li>$P_{ij} \geq 0$ for all $i,j$</li>
+                    <li>$\sum_{j=1}^{n} P_{ij} = 1$ for all $i$</li>
+                </ul>
+            </div>
+
+            <div class="exercise">
+                <h4>Exercise 1.1</h4>
+                Prove that the product of two row-stochastic matrices is row-stochastic. Show that the set of $n \times n$ row-stochastic matrices forms a monoid under matrix multiplication.
+            </div>
+
+            <h3 id="eigenvalues">1.2 Eigenvalues and Eigenvectors</h3>
+
+            <div class="definition">
+                <h4>Definition 1.3: Eigenvalues and Eigenvectors</h4>
+                For a matrix $A \in \mathbb{R}^{n \times n}$, a scalar $\lambda \in \mathbb{C}$ is an eigenvalue with corresponding eigenvector $v \in \mathbb{C}^n \setminus \{0\}$ if:
+                $$Av = \lambda v$$
+            </div>
+
+            <p>The characteristic polynomial of $A$ is $p(\lambda) = \det(A - \lambda I)$, and eigenvalues are its roots.</p>
+
+            <div class="theorem">
+                <h4>Theorem 1.2: Perron-Frobenius Theorem (Simplified)</h4>
+                If $A$ is a primitive stochastic matrix (irreducible and aperiodic), then:
+                <ul>
+                    <li>$\lambda = 1$ is the largest eigenvalue in magnitude</li>
+                    <li>The corresponding eigenvector has all positive entries</li>
+                    <li>This eigenvalue has algebraic and geometric multiplicity 1</li>
+                </ul>
+            </div>
+
+            <p>This theorem is crucial for understanding the convergence of Markov chains in RL, as it guarantees the existence of a unique stationary distribution.</p>
+
+            <div class="example">
+                <h4>Example 1.1: Eigendecomposition of a Transition Matrix</h4>
+                Consider the transition matrix:
+                $$P = \begin{pmatrix} 0.7 & 0.3 \\ 0.4 & 0.6 \end{pmatrix}$$
+                
+                The characteristic polynomial is:
+                $$\det(P - \lambda I) = (0.7 - \lambda)(0.6 - \lambda) - 0.12 = \lambda^2 - 1.3\lambda + 0.3$$
+                
+                Solving: $\lambda_1 = 1, \lambda_2 = 0.3$
+                
+                The stationary distribution corresponds to $\lambda_1 = 1$:
+                $$(P - I)v = 0 \Rightarrow v = \begin{pmatrix} 4/7 \\ 3/7 \end{pmatrix}$$
+            </div>
+
+            <h3 id="matrix-decomposition">1.3 Matrix Decomposition</h3>
+
+            <h4>Singular Value Decomposition (SVD)</h4>
+
+            <div class="theorem">
+                <h4>Theorem 1.3: Singular Value Decomposition</h4>
+                Every matrix $A \in \mathbb{R}^{m \times n}$ can be decomposed as:
+                $$A = U\Sigma V^T$$
+                where $U \in \mathbb{R}^{m \times m}$ and $V \in \mathbb{R}^{n \times n}$ are orthogonal matrices, and $\Sigma \in \mathbb{R}^{m \times n}$ is diagonal with non-negative entries.
+            </div>
+
+            <p>The diagonal entries $\sigma_1 \geq \sigma_2 \geq \cdots \geq \sigma_r > 0$ are called singular values, where $r = \text{rank}(A)$.</p>
+
+            <p><strong>Applications in RL:</strong></p>
+            <ul>
+                <li>Dimensionality reduction of state spaces</li>
+                <li>Regularization in function approximation</li>
+                <li>Analysis of value function approximation error</li>
+            </ul>
+
+            <h4>Eigendecomposition for Symmetric Matrices</h4>
+
+            <div class="theorem">
+                <h4>Theorem 1.4: Spectral Theorem</h4>
+                If $A \in \mathbb{R}^{n \times n}$ is symmetric, then $A$ has a complete set of orthonormal eigenvectors, and:
+                $$A = Q\Lambda Q^T$$
+                where $Q$ is orthogonal and $\Lambda$ is diagonal with real eigenvalues.
+            </div>
+
+            <div class="exercise">
+                <h4>Exercise 1.2</h4>
+                Show that for a symmetric positive semi-definite matrix $A$, all eigenvalues are non-negative. Prove that $A$ can be written as $A = B^TB$ for some matrix $B$.
+            </div>
+
+            <h3 id="norms-metrics">1.4 Norms and Metrics</h3>
+
+            <div class="definition">
+                <h4>Definition 1.4: Vector Norm</h4>
+                A function $\|\cdot\|: \mathbb{R}^n \to \mathbb{R}$ is a norm if it satisfies:
+                <ul>
+                    <li>$\|x\| \geq 0$ with equality iff $x = 0$</li>
+                    <li>$\|\alpha x\| = |\alpha|\|x\|$ for all $\alpha \in \mathbb{R}$</li>
+                    <li>$\|x + y\| \leq \|x\| + \|y\|$ (triangle inequality)</li>
+                </ul>
+            </div>
+
+            <p>Common norms in RL include:</p>
+            <ul>
+                <li>$L^1$ norm: $\|x\|_1 = \sum_{i=1}^n |x_i|$</li>
+                <li>$L^2$ norm: $\|x\|_2 = \sqrt{\sum_{i=1}^n x_i^2}$</li>
+                <li>$L^\infty$ norm: $\|x\|_\infty = \max_{i} |x_i|$</li>
+            </ul>
+
+            <div class="theorem">
+                <h4>Theorem 1.5: Norm Equivalence</h4>
+                In finite dimensions, all norms are equivalent. Specifically, for any two norms $\|\cdot\|_a$ and $\|\cdot\|_b$ on $\mathbb{R}^n$, there exist constants $c, C > 0$ such that:
+                $$c\|x\|_a \leq \|x\|_b \leq C\|x\|_a$$
+                for all $x \in \mathbb{R}^n$.
+            </div>
+
+            <div class="section-summary">
+                <h4>Section 1 Summary</h4>
+                We've covered the linear algebra foundations essential for RL:
+                <ul>
+                    <li>Vector spaces and matrix operations form the basis for state and action representations</li>
+                    <li>Eigenanalysis is crucial for understanding Markov chain convergence</li>
+                    <li>Matrix decompositions enable dimensionality reduction and function approximation</li>
+                    <li>Norms provide metrics for measuring approximation quality</li>
+                </ul>
+            </div>
+
+            <h2 id="probability">2. Probability Theory</h2>
+
+            <h3 id="basic-probability">2.1 Basic Probability</h3>
+
+            <div class="definition">
+                <h4>Definition 2.1: Probability Space</h4>
+                A probability space is a triple $(\Omega, \mathcal{F}, P)$ where:
+                <ul>
+                    <li>$\Omega$ is the sample space</li>
+                    <li>$\mathcal{F}$ is a $\sigma$-algebra of events</li>
+                    <li>$P: \mathcal{F} \to [0,1]$ is a probability measure</li>
+                </ul>
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 2.1: Kolmogorov Axioms</h4>
+                A probability measure $P$ satisfies:
+                <ol>
+                    <li>$P(A) \geq 0$ for all $A \in \mathcal{F}$</li>
+                    <li>$P(\Omega) = 1$</li>
+                    <li>For countable disjoint events $A_1, A_2, \ldots$:
+                        $$P\left(\bigcup_{i=1}^\infty A_i\right) = \sum_{i=1}^\infty P(A_i)$$</li>
+                </ol>
+            </div>
+
+            <h3 id="random-variables">2.2 Random Variables</h3>
+
+            <div class="definition">
+                <h4>Definition 2.2: Random Variable</h4>
+                A random variable is a measurable function $X: \Omega \to \mathbb{R}$. The distribution function is:
+                $$F_X(x) = P(X \leq x)$$
+            </div>
+
+            <h4>Expectation and Variance</h4>
+
+            <div class="definition">
+                <h4>Definition 2.3: Expectation</h4>
+                For a discrete random variable $X$ with pmf $p(x)$:
+                $$\mathbb{E}[X] = \sum_x x \cdot p(x)$$
+                For a continuous random variable with pdf $f(x)$:
+                $$\mathbb{E}[X] = \int_{-\infty}^{\infty} x f(x) dx$$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 2.2: Linearity of Expectation</h4>
+                For random variables $X, Y$ and constants $a, b$:
+                $$\mathbb{E}[aX + bY] = a\mathbb{E}[X] + b\mathbb{E}[Y]$$
+                This holds even if $X$ and $Y$ are dependent.
+            </div>
+
+            <div class="definition">
+                <h4>Definition 2.4: Variance</h4>
+                $$\text{Var}(X) = \mathbb{E}[(X - \mathbb{E}[X])^2] = \mathbb{E}[X^2] - (\mathbb{E}[X])^2$$
+            </div>
+
+            <h3 id="distributions">2.3 Probability Distributions</h3>
+
+            <h4>Key Distributions in RL</h4>
+
+            <p><strong>Bernoulli Distribution:</strong> Models binary outcomes (e.g., success/failure in bandit problems)</p>
+            $$P(X = 1) = p, \quad P(X = 0) = 1-p$$
+            $$\mathbb{E}[X] = p, \quad \text{Var}(X) = p(1-p)$$
+
+            <p><strong>Categorical Distribution:</strong> Generalizes Bernoulli to multiple outcomes (policy distributions)</p>
+            $$P(X = k) = p_k, \quad \sum_{k=1}^n p_k = 1$$
+
+            <p><strong>Normal Distribution:</strong> Continuous approximation for many RL scenarios</p>
+            $$f(x) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left(-\frac{(x-\mu)^2}{2\sigma^2}\right)$$
+
+            <div class="theorem">
+                <h4>Theorem 2.3: Central Limit Theorem</h4>
+                Let $X_1, X_2, \ldots$ be iid random variables with $\mathbb{E}[X_i] = \mu$ and $\text{Var}(X_i) = \sigma^2 < \infty$. Then:
+                $$\frac{\bar{X}_n - \mu}{\sigma/\sqrt{n}} \xrightarrow{d} N(0,1)$$
+                where $\bar{X}_n = \frac{1}{n}\sum_{i=1}^n X_i$.
+            </div>
+
+            <p>This theorem justifies normal approximations for returns in RL when averaging over many episodes.</p>
+
+            <h3 id="conditional-probability">2.4 Conditional Probability</h3>
+
+            <div class="definition">
+                <h4>Definition 2.5: Conditional Probability</h4>
+                Given events $A, B$ with $P(B) > 0$:
+                $$P(A|B) = \frac{P(A \cap B)}{P(B)}$$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 2.4: Bayes' Theorem</h4>
+                $$P(A|B) = \frac{P(B|A)P(A)}{P(B)}$$
+                More generally, for a partition $\{A_i\}$:
+                $$P(A_j|B) = \frac{P(B|A_j)P(A_j)}{\sum_i P(B|A_i)P(A_i)}$$
+            </div>
+
+            <p>Bayes' theorem is fundamental in Bayesian RL for updating beliefs about environment parameters.</p>
+
+            <h4>Independence</h4>
+
+            <div class="definition">
+                <h4>Definition 2.6: Independence</h4>
+                Events $A$ and $B$ are independent if $P(A \cap B) = P(A)P(B)$, equivalently $P(A|B) = P(A)$.
+                Random variables $X$ and $Y$ are independent if their joint pdf factors:
+                $$f_{X,Y}(x,y) = f_X(x)f_Y(y)$$
+            </div>
+
+            <div class="exercise">
+                <h4>Exercise 2.1</h4>
+                In a multi-armed bandit with arms $\{1,2,\ldots,K\}$, suppose arm $i$ has Bernoulli reward with parameter $\theta_i$. If we place a Beta$(a,b)$ prior on each $\theta_i$, derive the posterior distribution after observing $s_i$ successes and $f_i$ failures for arm $i$.
+            </div>
+
+            <h3 id="markov-chains">2.5 Markov Chains</h3>
+
+            <div class="definition">
+                <h4>Definition 2.7: Markov Property</h4>
+                A stochastic process $\{X_t\}_{t \geq 0}$ satisfies the Markov property if:
+                $$P(X_{t+1} = j | X_t = i, X_{t-1} = i_{t-1}, \ldots, X_0 = i_0) = P(X_{t+1} = j | X_t = i)$$
+            </div>
+
+            <p>For a time-homogeneous Markov chain, the transition probabilities are constant:</p>
+            $$P_{ij} = P(X_{t+1} = j | X_t = i)$$
+
+            <div class="definition">
+                <h4>Definition 2.8: Stationary Distribution</h4>
+                A distribution $\pi$ is stationary for transition matrix $P$ if:
+                $$\pi^T P = \pi^T$$
+                or equivalently, $\pi$ is a left eigenvector of $P$ with eigenvalue 1.
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 2.5: Fundamental Theorem of Markov Chains</h4>
+                For an irreducible, finite Markov chain:
+                <ol>
+                    <li>A unique stationary distribution $\pi$ exists</li>
+                    <li>$\lim_{t \to \infty} P^t_{ij} = \pi_j$ for all $i,j$</li>
+                    <li>$\pi_j = \frac{1}{\mathbb{E}_j[\tau_j]}$ where $\tau_j$ is the return time to state $j$</li>
+                </ol>
+            </div>
+
+            <h4>Convergence Analysis</h4>
+
+            <p>The rate of convergence depends on the second-largest eigenvalue in magnitude. For a transition matrix $P$ with eigenvalues $1 = |\lambda_1| > |\lambda_2| \geq \cdots \geq |\lambda_n|$:</p>
+
+            $$\|P^t_{ij} - \pi_j\| \leq C|\lambda_2|^t$$
+
+            <p>This geometric convergence rate is crucial for analyzing policy evaluation in RL algorithms.</p>
+
+            <div class="example">
+                <h4>Example 2.1: Random Walk on a Graph</h4>
+                Consider a random walk on a connected graph $G = (V,E)$ with transition probabilities:
+                $$P_{ij} = \begin{cases}
+                \frac{1}{d_i} & \text{if } (i,j) \in E \\
+                0 & \text{otherwise}
+                \end{cases}$$
+                where $d_i$ is the degree of vertex $i$.
+                
+                The stationary distribution is:
+                $$\pi_i = \frac{d_i}{2|E|}$$
+            </div>
+
+            <div class="exercise">
+                <h4>Exercise 2.2</h4>
+                Prove that the random walk in Example 2.1 has the claimed stationary distribution. Show that for a regular graph (all vertices have the same degree), the stationary distribution is uniform.
+            </div>
+
+            <div class="section-summary">
+                <h4>Section 2 Summary</h4>
+                Probability theory provides the mathematical foundation for uncertainty in RL:
+                <ul>
+                    <li>Random variables model stochastic rewards and transitions</li>
+                    <li>Conditional probability enables policy definitions and Bayesian updates</li>
+                    <li>Markov chains model the sequential decision process</li>
+                    <li>Convergence analysis guides algorithm design</li>
+                </ul>
+            </div>
+
+            <h2 id="calculus">3. Calculus and Optimization</h2>
+
+            <h3 id="multivariable-calculus">3.1 Multivariable Calculus</h3>
+
+            <h4>Partial Derivatives and Gradients</h4>
+
+            <div class="definition">
+                <h4>Definition 3.1: Partial Derivative</h4>
+                For a function $f: \mathbb{R}^n \to \mathbb{R}$, the partial derivative with respect to $x_i$ is:
+                $\frac{\partial f}{\partial x_i} = \lim_{h \to 0} \frac{f(x_1, \ldots, x_i + h, \ldots, x_n) - f(x_1, \ldots, x_n)}{h}$
+            </div>
+
+            <div class="definition">
+                <h4>Definition 3.2: Gradient</h4>
+                The gradient of $f$ is the vector of partial derivatives:
+                $\nabla f(x) = \begin{pmatrix}
+                \frac{\partial f}{\partial x_1} \\
+                \vdots \\
+                \frac{\partial f}{\partial x_n}
+                \end{pmatrix}$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 3.1: Chain Rule (Multivariable)</h4>
+                If $f: \mathbb{R}^m \to \mathbb{R}$ and $g: \mathbb{R}^n \to \mathbb{R}^m$, then for $h = f \circ g$:
+                $\frac{\partial h}{\partial x_j} = \sum_{i=1}^m \frac{\partial f}{\partial y_i} \frac{\partial g_i}{\partial x_j}$
+                In vector form: $\nabla h = J_g^T \nabla f$ where $J_g$ is the Jacobian of $g$.
+            </div>
+
+            <p>This is essential for backpropagation in neural network-based RL algorithms.</p>
+
+            <h4>Taylor Series and Approximation</h4>
+
+            <div class="theorem">
+                <h4>Theorem 3.2: Taylor's Theorem (Multivariable)</h4>
+                For a twice-differentiable function $f: \mathbb{R}^n \to \mathbb{R}$:
+                $f(x + h) = f(x) + \nabla f(x)^T h + \frac{1}{2} h^T \nabla^2 f(x) h + o(\|h\|^2)$
+                where $\nabla^2 f(x)$ is the Hessian matrix.
+            </div>
+
+            <div class="definition">
+                <h4>Definition 3.3: Hessian Matrix</h4>
+                The Hessian is the matrix of second partial derivatives:
+                $[\nabla^2 f(x)]_{ij} = \frac{\partial^2 f}{\partial x_i \partial x_j}$
+            </div>
+
+            <div class="example">
+                <h4>Example 3.1: Quadratic Function Analysis</h4>
+                Consider the quadratic function $f(x) = \frac{1}{2}x^T A x - b^T x + c$ where $A$ is symmetric.
+                
+                Then:
+                $\nabla f(x) = Ax - b$
+                $\nabla^2 f(x) = A$
+                
+                The critical point satisfies $Ax^* = b$, so $x^* = A^{-1}b$ (if $A$ is invertible).
+                If $A \succ 0$, this is a global minimum.
+            </div>
+
+            <h3 id="optimization">3.2 Optimization Theory</h3>
+
+            <h4>Unconstrained Optimization</h4>
+
+            <div class="theorem">
+                <h4>Theorem 3.3: First-Order Necessary Condition</h4>
+                If $x^*$ is a local minimum of $f: \mathbb{R}^n \to \mathbb{R}$ and $f$ is differentiable at $x^*$, then:
+                $\nabla f(x^*) = 0$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 3.4: Second-Order Conditions</h4>
+                Let $f$ be twice differentiable at $x^*$ with $\nabla f(x^*) = 0$.
+                <ul>
+                    <li>If $\nabla^2 f(x^*) \succ 0$, then $x^*$ is a strict local minimum</li>
+                    <li>If $\nabla^2 f(x^*) \prec 0$, then $x^*$ is a strict local maximum</li>
+                    <li>If $\nabla^2 f(x^*)$ is indefinite, then $x^*$ is a saddle point</li>
+                </ul>
+            </div>
+
+            <h4>Convex Optimization</h4>
+
+            <div class="definition">
+                <h4>Definition 3.4: Convex Function</h4>
+                A function $f: \mathbb{R}^n \to \mathbb{R}$ is convex if for all $x, y \in \mathbb{R}^n$ and $\lambda \in [0,1]$:
+                $f(\lambda x + (1-\lambda)y) \leq \lambda f(x) + (1-\lambda) f(y)$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 3.5: Characterization of Convexity</h4>
+                For a twice-differentiable function $f$, the following are equivalent:
+                <ol>
+                    <li>$f$ is convex</li>
+                    <li>$\nabla^2 f(x) \succeq 0$ for all $x$</li>
+                    <li>$f(y) \geq f(x) + \nabla f(x)^T (y - x)$ for all $x, y$</li>
+                </ol>
+            </div>
+
+            <p>Convex functions have the crucial property that any local minimum is global, making optimization much more tractable.</p>
+
+            <div class="theorem">
+                <h4>Theorem 3.6: Global Optimality for Convex Functions</h4>
+                If $f$ is convex and $\nabla f(x^*) = 0$, then $x^*$ is a global minimum.
+            </div>
+
+            <h3 id="lagrange-multipliers">3.3 Lagrange Multipliers</h3>
+
+            <p>Many RL problems involve constrained optimization, such as policy optimization subject to trust region constraints or budget limitations.</p>
+
+            <div class="theorem">
+                <h4>Theorem 3.7: Method of Lagrange Multipliers</h4>
+                Consider the problem:
+                $\min_{x \in \mathbb{R}^n} f(x) \quad \text{subject to} \quad g_i(x) = 0, \; i = 1, \ldots, m$
+                
+                If $x^*$ is a local optimum and the constraint gradients $\{\nabla g_i(x^*)\}$ are linearly independent, then there exist multipliers $\lambda_1, \ldots, \lambda_m$ such that:
+                $\nabla f(x^*) + \sum_{i=1}^m \lambda_i \nabla g_i(x^*) = 0$
+            </div>
+
+            <div class="definition">
+                <h4>Definition 3.5: Lagrangian</h4>
+                The Lagrangian function is:
+                $\mathcal{L}(x, \lambda) = f(x) + \sum_{i=1}^m \lambda_i g_i(x)$
+                Critical points satisfy $\nabla_x \mathcal{L} = 0$ and $\nabla_\lambda \mathcal{L} = 0$.
+            </div>
+
+            <h4>Karush-Kuhn-Tucker (KKT) Conditions</h4>
+
+            <p>For inequality constraints, we need the more general KKT conditions:</p>
+
+            <div class="theorem">
+                <h4>Theorem 3.8: KKT Conditions</h4>
+                Consider:
+                $\min f(x) \quad \text{subject to} \quad g_i(x) \leq 0, \; h_j(x) = 0$
+                
+                If $x^*$ is optimal and constraint qualifications hold, then there exist $\lambda_i \geq 0, \mu_j$ such that:
+                <ol>
+                    <li>$\nabla f(x^*) + \sum_i \lambda_i \nabla g_i(x^*) + \sum_j \mu_j \nabla h_j(x^*) = 0$</li>
+                    <li>$g_i(x^*) \leq 0, h_j(x^*) = 0$ (feasibility)</li>
+                    <li>$\lambda_i \geq 0$ (dual feasibility)</li>
+                    <li>$\lambda_i g_i(x^*) = 0$ (complementary slackness)</li>
+                </ol>
+            </div>
+
+            <div class="exercise">
+                <h4>Exercise 3.1</h4>
+                In portfolio optimization for multi-armed bandits, consider maximizing expected reward $\sum_{i=1}^K w_i \mu_i$ subject to $\sum_{i=1}^K w_i = 1$ and $w_i \geq 0$, where $w_i$ is the probability of selecting arm $i$. Use Lagrange multipliers to find the optimal solution when you know the true means $\mu_i$.
+            </div>
+
+            <h3 id="gradient-methods">3.4 Gradient Methods</h3>
+
+            <h4>Gradient Descent</h4>
+
+            <p>The fundamental algorithm for unconstrained optimization:</p>
+
+            $x_{k+1} = x_k - \alpha_k \nabla f(x_k)$
+
+            <div class="theorem">
+                <h4>Theorem 3.9: Convergence of Gradient Descent</h4>
+                Assume $f$ is $L$-smooth (Lipschitz gradient) and $\mu$-strongly convex. With step size $\alpha \leq \frac{2}{\mu + L}$:
+                $f(x_k) - f^* \leq \left(\frac{L - \mu}{L + \mu}\right)^k (f(x_0) - f^*)$
+                
+                The convergence rate is $O(\kappa^k)$ where $\kappa = \frac{L}{\mu}$ is the condition number.
+            </div>
+
+            <p><strong>Proof Sketch:</strong> Using the smoothness and strong convexity assumptions, we can bound the progress at each iteration. The key insight is that the gradient points in the direction of steepest decrease, and the Lipschitz condition ensures we don't overshoot.</p>
+
+            <h4>Stochastic Gradient Descent</h4>
+
+            <p>In RL, we often work with stochastic objectives. Consider minimizing $f(x) = \mathbb{E}[F(x, \xi)]$ where $\xi$ is random:</p>
+
+            $x_{k+1} = x_k - \alpha_k \nabla F(x_k, \xi_k)$
+
+            <div class="theorem">
+                <h4>Theorem 3.10: SGD Convergence</h4>
+                Under appropriate conditions (unbiased gradients, bounded variance, diminishing step sizes), SGD converges to the optimal solution:
+                $\lim_{k \to \infty} \mathbb{E}[\|x_k - x^*\|^2] = 0$
+                provided $\sum_k \alpha_k = \infty$ and $\sum_k \alpha_k^2 < \infty$.
+            </div>
+
+            <h4>Natural Gradient</h4>
+
+            <p>In policy gradient methods, the natural gradient accounts for the geometry of the policy space:</p>
+
+            <div class="definition">
+                <h4>Definition 3.6: Natural Gradient</h4>
+                The natural gradient is:
+                $\tilde{\nabla}_\theta J(\theta) = G(\theta)^{-1} \nabla_\theta J(\theta)$
+                where $G(\theta)$ is the Fisher Information Matrix:
+                $G(\theta) = \mathbb{E}\left[\nabla_\theta \log \pi(a|s;\theta) \nabla_\theta \log \pi(a|s;\theta)^T\right]$
+            </div>
+
+            <p>This provides a more principled update direction that's invariant to reparametrization of the policy.</p>
+
+            <div class="example">
+                <h4>Example 3.2: Policy Gradient for Softmax Policy</h4>
+                Consider a softmax policy $\pi(a|s;\theta) = \frac{\exp(\theta^T \phi(s,a))}{\sum_{a'} \exp(\theta^T \phi(s,a'))}$.
+                
+                The score function is:
+                $\nabla_\theta \log \pi(a|s;\theta) = \phi(s,a) - \mathbb{E}_{\pi}[\phi(s,\cdot)]$
+                
+                The policy gradient theorem gives:
+                $\nabla_\theta J(\theta) = \mathbb{E}\left[Q^\pi(s,a) \nabla_\theta \log \pi(a|s;\theta)\right]$
+            </div>
+
+            <div class="exercise">
+                <h4>Exercise 3.2</h4>
+                Derive the Fisher Information Matrix for the softmax policy in Example 3.2. Show that the natural gradient update has the form of a weighted least squares problem.
+            </div>
+
+            <div class="section-summary">
+                <h4>Section 3 Summary</h4>
+                Calculus and optimization provide the tools for learning in RL:
+                <ul>
+                    <li>Gradients enable policy improvement and value function updates</li>
+                    <li>Convex optimization guarantees global solutions when applicable</li>
+                    <li>Constrained optimization handles policy constraints and regularization</li>
+                    <li>Stochastic methods adapt to the inherent randomness in RL</li>
+                </ul>
+            </div>
+
+            <h2 id="dynamic-programming">4. Dynamic Programming</h2>
+
+            <p>Dynamic programming forms the theoretical foundation of reinforcement learning, providing the mathematical framework for sequential decision making under uncertainty.</p>
+
+            <h3 id="bellman-equations">4.1 Bellman Equations</h3>
+
+            <div class="definition">
+                <h4>Definition 4.1: Value Functions</h4>
+                For a policy $\pi$ and discount factor $\gamma \in [0,1)$:
+                <ul>
+                    <li>State value function: $V^\pi(s) = \mathbb{E}_\pi\left[\sum_{t=0}^\infty \gamma^t R_{t+1} \mid S_0 = s\right]$</li>
+                    <li>Action value function: $Q^\pi(s,a) = \mathbb{E}_\pi\left[\sum_{t=0}^\infty \gamma^t R_{t+1} \mid S_0 = s, A_0 = a\right]$</li>
+                </ul>
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 4.1: Bellman Equations</h4>
+                The value functions satisfy the recursive relations:
+                $V^\pi(s) = \sum_a \pi(a|s) \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V^\pi(s')]$
+                $Q^\pi(s,a) = \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma \sum_{a'} \pi(a'|s') Q^\pi(s',a')]$
+            </div>
+
+            <p><strong>Proof:</strong> We prove the first equation. By definition:
+            $V^\pi(s) = \mathbb{E}_\pi\left[R_1 + \gamma \sum_{t=1}^\infty \gamma^{t-1} R_{t+1} \mid S_0 = s\right]$
+            
+            Using the law of total expectation conditioning on $A_0$ and $S_1$:
+            $V^\pi(s) = \sum_a \pi(a|s) \sum_{s'} P(s'|s,a) \mathbb{E}_\pi[R_1 + \gamma V^\pi(S_1) \mid S_0 = s, A_0 = a, S_1 = s']$
+            $= \sum_a \pi(a|s) \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V^\pi(s')]$</p>
+
+            <h4>Optimal Value Functions</h4>
+
+            <div class="definition">
+                <h4>Definition 4.2: Optimal Value Functions</h4>
+                $V^*(s) = \max_\pi V^\pi(s), \quad Q^*(s,a) = \max_\pi Q^\pi(s,a)$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 4.2: Bellman Optimality Equations</h4>
+                $V^*(s) = \max_a \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V^*(s')]$
+                $Q^*(s,a) = \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma \max_{a'} Q^*(s',a')]$
+            </div>
+
+            <p>These nonlinear equations uniquely determine the optimal value functions.</p>
+
+            <h4>Existence and Uniqueness</h4>
+
+            <div class="theorem">
+                <h4>Theorem 4.3: Existence of Optimal Policy</h4>
+                For finite MDPs, there exists a deterministic stationary policy $\pi^*$ that is optimal, i.e., $V^{\pi^*}(s) = V^*(s)$ for all $s$.
+            </div>
+
+            <p><strong>Proof Sketch:</strong> The proof uses the compactness of the policy space and continuity arguments. The key insight is that the Bellman operator is a contraction mapping.</p>
+
+            <h3 id="value-iteration">4.2 Value Iteration</h3>
+
+            <p>Value iteration is an algorithm to compute optimal value functions by iteratively applying the Bellman optimality operator.</p>
+
+            <div class="definition">
+                <h4>Definition 4.3: Bellman Optimality Operator</h4>
+                For value function $V: S \to \mathbb{R}$, define:
+                $[T^*V](s) = \max_a \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V(s')]$
+            </div>
+
+            <p>The value iteration algorithm is:
+            $V_{k+1} = T^* V_k$
+            starting from any initial $V_0$.</p>
+
+            <div class="theorem">
+                <h4>Theorem 4.4: Contraction Property</h4>
+                The Bellman optimality operator $T^*$ is a $\gamma$-contraction in the supremum norm:
+                $\|T^* V - T^* U\|_\infty \leq \gamma \|V - U\|_\infty$
+            </div>
+
+            <p><strong>Proof:</strong> For any state $s$:
+            $|[T^*V](s) - [T^*U](s)| = \left|\max_a \sum_{s'} P(s'|s,a)\gamma[V(s') - U(s')] - \max_a \sum_{s'} P(s'|s,a)\gamma[V(s') - U(s')]\right|$
+            
+            Using the property $|\max_i x_i - \max_i y_i| \leq \max_i |x_i - y_i|$:
+            $\leq \max_a \left|\sum_{s'} P(s'|s,a)\gamma[V(s') - U(s')]\right| \leq \gamma \max_{s'} |V(s') - U(s')| = \gamma \|V - U\|_\infty$</p>
+
+            <div class="theorem">
+                <h4>Theorem 4.5: Convergence of Value Iteration</h4>
+                The value iteration sequence converges to $V^*$:
+                $\lim_{k \to \infty} V_k = V^*$
+                with geometric convergence rate:
+                $\|V_k - V^*\|_\infty \leq \gamma^k \|V_0 - V^*\|_\infty$
+            </div>
+
+            <p>This follows immediately from the Banach Fixed Point Theorem since $T^*$ is a contraction mapping on the complete metric space of bounded functions.</p>
+
+            <div class="example">
+                <h4>Example 4.1: Simple Grid World</h4>
+                Consider a $2 \times 2$ grid world with states $\{1,2,3,4\}$ arranged as:
+                $\begin{array}{|c|c|}
+                \hline
+                1 & 2 \\
+                \hline
+                3 & 4 \\
+                \hline
+                \end{array}$
+                
+                Actions are $\{\text{up, down, left, right}\}$ with deterministic transitions. Rewards are $R(s,a,s') = -1$ except $R(4,\cdot,4) = 0$ (terminal state).
+                
+                Value iteration converges to:
+                $V^* = \begin{pmatrix} -3 \\ -2 \\ -2 \\ 0 \end{pmatrix}$
+            </div>
+
+            <h3 id="policy-iteration">4.3 Policy Iteration</h3>
+
+            <p>Policy iteration alternates between policy evaluation and policy improvement.</p>
+
+            <h4>Policy Evaluation</h4>
+
+            <p>Given policy $\pi$, solve the linear system:
+            $V^\pi = T^\pi V^\pi$
+            where $[T^\pi V](s) = \sum_a \pi(a|s) \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V(s')]$.</p>
+
+            <div class="theorem">
+                <h4>Theorem 4.6: Policy Evaluation Convergence</h4>
+                The operator $T^\pi$ is a $\gamma$-contraction, so iterating:
+                $V_{k+1} = T^\pi V_k$
+                converges to $V^\pi$ with rate $O(\gamma^k)$.
+            </div>
+
+            <h4>Policy Improvement</h4>
+
+            <p>Given $V^\pi$, define the improved policy:
+            $\pi'(s) = \arg\max_a \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V^\pi(s')]$</p>
+
+            <div class="theorem">
+                <h4>Theorem 4.7: Policy Improvement Theorem</h4>
+                If $V^\pi(s) \leq Q^\pi(s, \pi'(s))$ for all $s$, then $V^{\pi'}(s) \geq V^\pi(s)$ for all $s$.
+                If the inequality is strict for at least one state, then $V^{\pi'}(s) > V^\pi(s)$ for at least one state.
+            </div>
+
+            <p><strong>Proof:</strong> We have:
+            $V^\pi(s) \leq Q^\pi(s, \pi'(s)) = \mathbb{E}[R_1 + \gamma V^\pi(S_1) \mid S_0 = s, A_0 = \pi'(s)]$
+            
+            Applying $\pi'$ for the second step:
+            $\leq \mathbb{E}[R_1 + \gamma Q^\pi(S_1, \pi'(S_1)) \mid S_0 = s, A_0 = \pi'(s)]$
+            $= \mathbb{E}[R_1 + \gamma R_2 + \gamma^2 V^\pi(S_2) \mid S_0 = s, \text{following } \pi']$
+            
+            Continuing this argument:
+            $\leq \mathbb{E}\left[\sum_{t=0}^\infty \gamma^t R_{t+1} \mid S_0 = s, \text{following } \pi'\right] = V^{\pi'}(s)$</p>
+
+            <div class="theorem">
+                <h4>Theorem 4.8: Policy Iteration Convergence</h4>
+                Policy iteration converges to the optimal policy $\pi^*$ in finitely many steps for finite MDPs.
+            </div>
+
+            <p>The proof relies on the fact that each policy improvement step strictly increases the value function unless the current policy is already optimal, and there are only finitely many deterministic policies.</p>
+
+            <h4>Modified Policy Iteration</h4>
+
+            <p>To reduce computational cost, we can perform incomplete policy evaluation:</p>
+            <ul>
+                <li>Perform $m$ steps of policy evaluation instead of full convergence</li>
+                <li>As $m \to \infty$, this reduces to standard policy iteration</li>
+                <li>As $m = 1$, this becomes value iteration</li>
+            </ul>
+
+            <div class="exercise">
+                <h4>Exercise 4.1</h4>
+                Prove that value iteration is equivalent to policy iteration with a single step of policy evaluation. Specifically, show that if $V_k$ is the value function after $k$ iterations of value iteration, then the greedy policy with respect to $V_k$ followed by one step of policy evaluation yields $V_{k+1}$.
+            </div>
+
+            <h4>Generalized Policy Iteration</h4>
+
+            <p>The general framework that encompasses most RL algorithms:</p>
+
+            <div class="definition">
+                <h4>Definition 4.4: Generalized Policy Iteration</h4>
+                Any algorithm that maintains estimates of both value functions and policies, where:
+                <ul>
+                    <li>The value function approximates the value of the current policy</li>
+                    <li>The policy is improved with respect to the current value function</li>
+                </ul>
+            </div>
+
+            <p>This framework includes temporal difference learning, Q-learning, actor-critic methods, and many others.</p>
+
+            <div class="section-summary">
+                <h4>Section 4 Summary</h4>
+                Dynamic programming provides the mathematical foundation for RL:
+                <ul>
+                    <li>Bellman equations characterize optimal value functions</li>
+                    <li>Contraction mapping theory guarantees convergence</li>
+                    <li>Value and policy iteration provide computational algorithms</li>
+                    <li>Generalized policy iteration unifies most RL approaches</li>
+                </ul>
+            </div>
+
+            <h2 id="functional-analysis">5. Functional Analysis</h2>
+
+            <p>Functional analysis provides the mathematical framework for understanding convergence and approximation in infinite-dimensional spaces, crucial for function approximation in RL.</p>
+
+            <h3 id="metric-spaces">5.1 Metric Spaces</h3>
+
+            <div class="definition">
+                <h4>Definition 5.1: Metric Space</h4>
+                A metric space is a pair $(X, d)$ where $X$ is a set and $d: X \times X \to \mathbb{R}$ satisfies:
+                <ul>
+                    <li>$d(x, y) \geq 0$ with equality iff $x = y$</li>
+                    <li>$d(x, y) = d(y, x)$ (symmetry)</li>
+                    <li>$d(x, z) \leq d(x, y) + d(y, z)$ (triangle inequality)</li>
+                </ul>
+            </div>
+
+            <div class="example">
+                <h4>Example 5.1: Common Metrics in RL</h4>
+                <ul>
+                    <li>Supremum norm: $d(f, g) = \sup_{s \in S} |f(s) - g(s)|$</li>
+                    <li>$L^2$ norm: $d(f, g) = \sqrt{\int (f(s) - g(s))^2 \, d\mu(s)}$</li>
+                    <li>Wasserstein distance for probability distributions</li>
+                </ul>
+            </div>
+
+            <div class="definition">
+                <h4>Definition 5.2: Completeness</h4>
+                A metric space $(X, d)$ is complete if every Cauchy sequence converges to a point in $X$. A sequence $\{x_n\}$ is Cauchy if:
+                $\forall \epsilon > 0, \exists N : n, m \geq N \Rightarrow d(x_n, x_m) < \epsilon$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 5.1: Banach Fixed Point Theorem</h4>
+                Let $(X, d)$ be a complete metric space and $T: X \to X$ be a contraction mapping (i.e., $d(Tx, Ty) \leq \alpha d(x, y)$ for some $\alpha < 1$). Then:
+                <ol>
+                    <li>$T$ has a unique fixed point $x^* \in X$</li>
+                    <li>For any $x_0 \in X$, the sequence $x_{n+1} = Tx_n$ converges to $x^*$</li>
+                    <li>$d(x_n,], ['\\(', '\\)']],
+                displayMath: [['$', '$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            }
+        };
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="sidebar">
+            <h2>Contents</h2>
+            <ul>
+                <li><a href="#introduction">Introduction</a></li>
+                <li><a href="#linear-algebra">1. Linear Algebra</a>
+                    <ul class="subsection">
+                        <li><a href="#vectors-matrices">1.1 Vectors and Matrices</a></li>
+                        <li><a href="#eigenvalues">1.2 Eigenvalues and Eigenvectors</a></li>
+                        <li><a href="#matrix-decomposition">1.3 Matrix Decomposition</a></li>
+                        <li><a href="#norms-metrics">1.4 Norms and Metrics</a></li>
+                    </ul>
+                </li>
+                <li><a href="#probability">2. Probability Theory</a>
+                    <ul class="subsection">
+                        <li><a href="#basic-probability">2.1 Basic Probability</a></li>
+                        <li><a href="#random-variables">2.2 Random Variables</a></li>
+                        <li><a href="#distributions">2.3 Probability Distributions</a></li>
+                        <li><a href="#conditional-probability">2.4 Conditional Probability</a></li>
+                        <li><a href="#markov-chains">2.5 Markov Chains</a></li>
+                    </ul>
+                </li>
+                <li><a href="#calculus">3. Calculus and Optimization</a>
+                    <ul class="subsection">
+                        <li><a href="#multivariable-calculus">3.1 Multivariable Calculus</a></li>
+                        <li><a href="#optimization">3.2 Optimization Theory</a></li>
+                        <li><a href="#lagrange-multipliers">3.3 Lagrange Multipliers</a></li>
+                        <li><a href="#gradient-methods">3.4 Gradient Methods</a></li>
+                    </ul>
+                </li>
+                <li><a href="#dynamic-programming">4. Dynamic Programming</a>
+                    <ul class="subsection">
+                        <li><a href="#bellman-equations">4.1 Bellman Equations</a></li>
+                        <li><a href="#value-iteration">4.2 Value Iteration</a></li>
+                        <li><a href="#policy-iteration">4.3 Policy Iteration</a></li>
+                    </ul>
+                </li>
+                <li><a href="#functional-analysis">5. Functional Analysis</a>
+                    <ul class="subsection">
+                        <li><a href="#metric-spaces">5.1 Metric Spaces</a></li>
+                        <li><a href="#banach-spaces">5.2 Banach Spaces</a></li>
+                        <li><a href="#contraction-mapping">5.3 Contraction Mapping</a></li>
+                    </ul>
+                </li>
+                <li><a href="#information-theory">6. Information Theory</a>
+                    <ul class="subsection">
+                        <li><a href="#entropy">6.1 Entropy</a></li>
+                        <li><a href="#mutual-information">6.2 Mutual Information</a></li>
+                        <li><a href="#kl-divergence">6.3 KL Divergence</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="content">
+            <h1 id="introduction">Mathematical Prerequisites for Reinforcement Learning</h1>
+
+            <p>This comprehensive tutorial covers the mathematical foundations necessary for understanding modern reinforcement learning. We assume familiarity with undergraduate-level mathematics and provide rigorous derivations and proofs throughout.</p>
+
+            <h2 id="linear-algebra">1. Linear Algebra</h2>
+
+            <h3 id="vectors-matrices">1.1 Vectors and Matrices</h3>
+
+            <div class="definition">
+                <h4>Definition 1.1: Vector Space</h4>
+                A vector space $V$ over a field $\mathbb{F}$ (typically $\mathbb{R}$ or $\mathbb{C}$) is a set equipped with two operations:
+                <ul>
+                    <li>Vector addition: $+: V \times V \to V$</li>
+                    <li>Scalar multiplication: $\cdot: \mathbb{F} \times V \to V$</li>
+                </ul>
+                satisfying eight axioms including associativity, commutativity, and distributivity.
+            </div>
+
+            <p>In reinforcement learning, we primarily work with finite-dimensional real vector spaces $\mathbb{R}^n$. State vectors, action vectors, and policy parameters all live in such spaces.</p>
+
+            <h4>Matrix Operations and Properties</h4>
+
+            <p>For matrices $A \in \mathbb{R}^{m \times n}$ and $B \in \mathbb{R}^{n \times p}$, the matrix product $C = AB$ is defined as:</p>
+
+            $$C_{ij} = \sum_{k=1}^{n} A_{ik}B_{kj}$$
+
+            <div class="theorem">
+                <h4>Theorem 1.1: Matrix Multiplication Properties</h4>
+                Matrix multiplication is:
+                <ul>
+                    <li>Associative: $(AB)C = A(BC)$</li>
+                    <li>Distributive: $A(B + C) = AB + AC$</li>
+                    <li>Generally not commutative: $AB \neq BA$</li>
+                </ul>
+            </div>
+
+            <p><strong>Proof:</strong> We prove associativity. Let $A \in \mathbb{R}^{m \times n}$, $B \in \mathbb{R}^{n \times p}$, and $C \in \mathbb{R}^{p \times q}$. The $(i,j)$-th entry of $(AB)C$ is:</p>
+
+            $$[(AB)C]_{ij} = \sum_{k=1}^{p} (AB)_{ik}C_{kj} = \sum_{k=1}^{p} \left(\sum_{\ell=1}^{n} A_{i\ell}B_{\ell k}\right)C_{kj}$$
+
+            $$= \sum_{k=1}^{p} \sum_{\ell=1}^{n} A_{i\ell}B_{\ell k}C_{kj} = \sum_{\ell=1}^{n} A_{i\ell} \sum_{k=1}^{p} B_{\ell k}C_{kj} = [A(BC)]_{ij}$$
+
+            <h4>Special Matrices in RL</h4>
+
+            <p>Several types of matrices are particularly important in reinforcement learning:</p>
+
+            <ul>
+                <li><strong>Transition matrices:</strong> Row-stochastic matrices where each row sums to 1</li>
+                <li><strong>Q-matrices:</strong> Action-value matrices $Q \in \mathbb{R}^{|S| \times |A|}$</li>
+                <li><strong>Feature matrices:</strong> $\Phi \in \mathbb{R}^{|S| \times d}$ for linear function approximation</li>
+            </ul>
+
+            <div class="definition">
+                <h4>Definition 1.2: Stochastic Matrix</h4>
+                A matrix $P \in \mathbb{R}^{n \times n}$ is called row-stochastic if:
+                <ul>
+                    <li>$P_{ij} \geq 0$ for all $i,j$</li>
+                    <li>$\sum_{j=1}^{n} P_{ij} = 1$ for all $i$</li>
+                </ul>
+            </div>
+
+            <div class="exercise">
+                <h4>Exercise 1.1</h4>
+                Prove that the product of two row-stochastic matrices is row-stochastic. Show that the set of $n \times n$ row-stochastic matrices forms a monoid under matrix multiplication.
+            </div>
+
+            <h3 id="eigenvalues">1.2 Eigenvalues and Eigenvectors</h3>
+
+            <div class="definition">
+                <h4>Definition 1.3: Eigenvalues and Eigenvectors</h4>
+                For a matrix $A \in \mathbb{R}^{n \times n}$, a scalar $\lambda \in \mathbb{C}$ is an eigenvalue with corresponding eigenvector $v \in \mathbb{C}^n \setminus \{0\}$ if:
+                $$Av = \lambda v$$
+            </div>
+
+            <p>The characteristic polynomial of $A$ is $p(\lambda) = \det(A - \lambda I)$, and eigenvalues are its roots.</p>
+
+            <div class="theorem">
+                <h4>Theorem 1.2: Perron-Frobenius Theorem (Simplified)</h4>
+                If $A$ is a primitive stochastic matrix (irreducible and aperiodic), then:
+                <ul>
+                    <li>$\lambda = 1$ is the largest eigenvalue in magnitude</li>
+                    <li>The corresponding eigenvector has all positive entries</li>
+                    <li>This eigenvalue has algebraic and geometric multiplicity 1</li>
+                </ul>
+            </div>
+
+            <p>This theorem is crucial for understanding the convergence of Markov chains in RL, as it guarantees the existence of a unique stationary distribution.</p>
+
+            <div class="example">
+                <h4>Example 1.1: Eigendecomposition of a Transition Matrix</h4>
+                Consider the transition matrix:
+                $$P = \begin{pmatrix} 0.7 & 0.3 \\ 0.4 & 0.6 \end{pmatrix}$$
+                
+                The characteristic polynomial is:
+                $$\det(P - \lambda I) = (0.7 - \lambda)(0.6 - \lambda) - 0.12 = \lambda^2 - 1.3\lambda + 0.3$$
+                
+                Solving: $\lambda_1 = 1, \lambda_2 = 0.3$
+                
+                The stationary distribution corresponds to $\lambda_1 = 1$:
+                $$(P - I)v = 0 \Rightarrow v = \begin{pmatrix} 4/7 \\ 3/7 \end{pmatrix}$$
+            </div>
+
+            <h3 id="matrix-decomposition">1.3 Matrix Decomposition</h3>
+
+            <h4>Singular Value Decomposition (SVD)</h4>
+
+            <div class="theorem">
+                <h4>Theorem 1.3: Singular Value Decomposition</h4>
+                Every matrix $A \in \mathbb{R}^{m \times n}$ can be decomposed as:
+                $$A = U\Sigma V^T$$
+                where $U \in \mathbb{R}^{m \times m}$ and $V \in \mathbb{R}^{n \times n}$ are orthogonal matrices, and $\Sigma \in \mathbb{R}^{m \times n}$ is diagonal with non-negative entries.
+            </div>
+
+            <p>The diagonal entries $\sigma_1 \geq \sigma_2 \geq \cdots \geq \sigma_r > 0$ are called singular values, where $r = \text{rank}(A)$.</p>
+
+            <p><strong>Applications in RL:</strong></p>
+            <ul>
+                <li>Dimensionality reduction of state spaces</li>
+                <li>Regularization in function approximation</li>
+                <li>Analysis of value function approximation error</li>
+            </ul>
+
+            <h4>Eigendecomposition for Symmetric Matrices</h4>
+
+            <div class="theorem">
+                <h4>Theorem 1.4: Spectral Theorem</h4>
+                If $A \in \mathbb{R}^{n \times n}$ is symmetric, then $A$ has a complete set of orthonormal eigenvectors, and:
+                $$A = Q\Lambda Q^T$$
+                where $Q$ is orthogonal and $\Lambda$ is diagonal with real eigenvalues.
+            </div>
+
+            <div class="exercise">
+                <h4>Exercise 1.2</h4>
+                Show that for a symmetric positive semi-definite matrix $A$, all eigenvalues are non-negative. Prove that $A$ can be written as $A = B^TB$ for some matrix $B$.
+            </div>
+
+            <h3 id="norms-metrics">1.4 Norms and Metrics</h3>
+
+            <div class="definition">
+                <h4>Definition 1.4: Vector Norm</h4>
+                A function $\|\cdot\|: \mathbb{R}^n \to \mathbb{R}$ is a norm if it satisfies:
+                <ul>
+                    <li>$\|x\| \geq 0$ with equality iff $x = 0$</li>
+                    <li>$\|\alpha x\| = |\alpha|\|x\|$ for all $\alpha \in \mathbb{R}$</li>
+                    <li>$\|x + y\| \leq \|x\| + \|y\|$ (triangle inequality)</li>
+                </ul>
+            </div>
+
+            <p>Common norms in RL include:</p>
+            <ul>
+                <li>$L^1$ norm: $\|x\|_1 = \sum_{i=1}^n |x_i|$</li>
+                <li>$L^2$ norm: $\|x\|_2 = \sqrt{\sum_{i=1}^n x_i^2}$</li>
+                <li>$L^\infty$ norm: $\|x\|_\infty = \max_{i} |x_i|$</li>
+            </ul>
+
+            <div class="theorem">
+                <h4>Theorem 1.5: Norm Equivalence</h4>
+                In finite dimensions, all norms are equivalent. Specifically, for any two norms $\|\cdot\|_a$ and $\|\cdot\|_b$ on $\mathbb{R}^n$, there exist constants $c, C > 0$ such that:
+                $$c\|x\|_a \leq \|x\|_b \leq C\|x\|_a$$
+                for all $x \in \mathbb{R}^n$.
+            </div>
+
+            <div class="section-summary">
+                <h4>Section 1 Summary</h4>
+                We've covered the linear algebra foundations essential for RL:
+                <ul>
+                    <li>Vector spaces and matrix operations form the basis for state and action representations</li>
+                    <li>Eigenanalysis is crucial for understanding Markov chain convergence</li>
+                    <li>Matrix decompositions enable dimensionality reduction and function approximation</li>
+                    <li>Norms provide metrics for measuring approximation quality</li>
+                </ul>
+            </div>
+
+            <h2 id="probability">2. Probability Theory</h2>
+
+            <h3 id="basic-probability">2.1 Basic Probability</h3>
+
+            <div class="definition">
+                <h4>Definition 2.1: Probability Space</h4>
+                A probability space is a triple $(\Omega, \mathcal{F}, P)$ where:
+                <ul>
+                    <li>$\Omega$ is the sample space</li>
+                    <li>$\mathcal{F}$ is a $\sigma$-algebra of events</li>
+                    <li>$P: \mathcal{F} \to [0,1]$ is a probability measure</li>
+                </ul>
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 2.1: Kolmogorov Axioms</h4>
+                A probability measure $P$ satisfies:
+                <ol>
+                    <li>$P(A) \geq 0$ for all $A \in \mathcal{F}$</li>
+                    <li>$P(\Omega) = 1$</li>
+                    <li>For countable disjoint events $A_1, A_2, \ldots$:
+                        $$P\left(\bigcup_{i=1}^\infty A_i\right) = \sum_{i=1}^\infty P(A_i)$$</li>
+                </ol>
+            </div>
+
+            <h3 id="random-variables">2.2 Random Variables</h3>
+
+            <div class="definition">
+                <h4>Definition 2.2: Random Variable</h4>
+                A random variable is a measurable function $X: \Omega \to \mathbb{R}$. The distribution function is:
+                $$F_X(x) = P(X \leq x)$$
+            </div>
+
+            <h4>Expectation and Variance</h4>
+
+            <div class="definition">
+                <h4>Definition 2.3: Expectation</h4>
+                For a discrete random variable $X$ with pmf $p(x)$:
+                $$\mathbb{E}[X] = \sum_x x \cdot p(x)$$
+                For a continuous random variable with pdf $f(x)$:
+                $$\mathbb{E}[X] = \int_{-\infty}^{\infty} x f(x) dx$$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 2.2: Linearity of Expectation</h4>
+                For random variables $X, Y$ and constants $a, b$:
+                $$\mathbb{E}[aX + bY] = a\mathbb{E}[X] + b\mathbb{E}[Y]$$
+                This holds even if $X$ and $Y$ are dependent.
+            </div>
+
+            <div class="definition">
+                <h4>Definition 2.4: Variance</h4>
+                $$\text{Var}(X) = \mathbb{E}[(X - \mathbb{E}[X])^2] = \mathbb{E}[X^2] - (\mathbb{E}[X])^2$$
+            </div>
+
+            <h3 id="distributions">2.3 Probability Distributions</h3>
+
+            <h4>Key Distributions in RL</h4>
+
+            <p><strong>Bernoulli Distribution:</strong> Models binary outcomes (e.g., success/failure in bandit problems)</p>
+            $$P(X = 1) = p, \quad P(X = 0) = 1-p$$
+            $$\mathbb{E}[X] = p, \quad \text{Var}(X) = p(1-p)$$
+
+            <p><strong>Categorical Distribution:</strong> Generalizes Bernoulli to multiple outcomes (policy distributions)</p>
+            $$P(X = k) = p_k, \quad \sum_{k=1}^n p_k = 1$$
+
+            <p><strong>Normal Distribution:</strong> Continuous approximation for many RL scenarios</p>
+            $$f(x) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp\left(-\frac{(x-\mu)^2}{2\sigma^2}\right)$$
+
+            <div class="theorem">
+                <h4>Theorem 2.3: Central Limit Theorem</h4>
+                Let $X_1, X_2, \ldots$ be iid random variables with $\mathbb{E}[X_i] = \mu$ and $\text{Var}(X_i) = \sigma^2 < \infty$. Then:
+                $$\frac{\bar{X}_n - \mu}{\sigma/\sqrt{n}} \xrightarrow{d} N(0,1)$$
+                where $\bar{X}_n = \frac{1}{n}\sum_{i=1}^n X_i$.
+            </div>
+
+            <p>This theorem justifies normal approximations for returns in RL when averaging over many episodes.</p>
+
+            <h3 id="conditional-probability">2.4 Conditional Probability</h3>
+
+            <div class="definition">
+                <h4>Definition 2.5: Conditional Probability</h4>
+                Given events $A, B$ with $P(B) > 0$:
+                $$P(A|B) = \frac{P(A \cap B)}{P(B)}$$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 2.4: Bayes' Theorem</h4>
+                $$P(A|B) = \frac{P(B|A)P(A)}{P(B)}$$
+                More generally, for a partition $\{A_i\}$:
+                $$P(A_j|B) = \frac{P(B|A_j)P(A_j)}{\sum_i P(B|A_i)P(A_i)}$$
+            </div>
+
+            <p>Bayes' theorem is fundamental in Bayesian RL for updating beliefs about environment parameters.</p>
+
+            <h4>Independence</h4>
+
+            <div class="definition">
+                <h4>Definition 2.6: Independence</h4>
+                Events $A$ and $B$ are independent if $P(A \cap B) = P(A)P(B)$, equivalently $P(A|B) = P(A)$.
+                Random variables $X$ and $Y$ are independent if their joint pdf factors:
+                $$f_{X,Y}(x,y) = f_X(x)f_Y(y)$$
+            </div>
+
+            <div class="exercise">
+                <h4>Exercise 2.1</h4>
+                In a multi-armed bandit with arms $\{1,2,\ldots,K\}$, suppose arm $i$ has Bernoulli reward with parameter $\theta_i$. If we place a Beta$(a,b)$ prior on each $\theta_i$, derive the posterior distribution after observing $s_i$ successes and $f_i$ failures for arm $i$.
+            </div>
+
+            <h3 id="markov-chains">2.5 Markov Chains</h3>
+
+            <div class="definition">
+                <h4>Definition 2.7: Markov Property</h4>
+                A stochastic process $\{X_t\}_{t \geq 0}$ satisfies the Markov property if:
+                $$P(X_{t+1} = j | X_t = i, X_{t-1} = i_{t-1}, \ldots, X_0 = i_0) = P(X_{t+1} = j | X_t = i)$$
+            </div>
+
+            <p>For a time-homogeneous Markov chain, the transition probabilities are constant:</p>
+            $$P_{ij} = P(X_{t+1} = j | X_t = i)$$
+
+            <div class="definition">
+                <h4>Definition 2.8: Stationary Distribution</h4>
+                A distribution $\pi$ is stationary for transition matrix $P$ if:
+                $$\pi^T P = \pi^T$$
+                or equivalently, $\pi$ is a left eigenvector of $P$ with eigenvalue 1.
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 2.5: Fundamental Theorem of Markov Chains</h4>
+                For an irreducible, finite Markov chain:
+                <ol>
+                    <li>A unique stationary distribution $\pi$ exists</li>
+                    <li>$\lim_{t \to \infty} P^t_{ij} = \pi_j$ for all $i,j$</li>
+                    <li>$\pi_j = \frac{1}{\mathbb{E}_j[\tau_j]}$ where $\tau_j$ is the return time to state $j$</li>
+                </ol>
+            </div>
+
+            <h4>Convergence Analysis</h4>
+
+            <p>The rate of convergence depends on the second-largest eigenvalue in magnitude. For a transition matrix $P$ with eigenvalues $1 = |\lambda_1| > |\lambda_2| \geq \cdots \geq |\lambda_n|$:</p>
+
+            $$\|P^t_{ij} - \pi_j\| \leq C|\lambda_2|^t$$
+
+            <p>This geometric convergence rate is crucial for analyzing policy evaluation in RL algorithms.</p>
+
+            <div class="example">
+                <h4>Example 2.1: Random Walk on a Graph</h4>
+                Consider a random walk on a connected graph $G = (V,E)$ with transition probabilities:
+                $$P_{ij} = \begin{cases}
+                \frac{1}{d_i} & \text{if } (i,j) \in E \\
+                0 & \text{otherwise}
+                \end{cases}$$
+                where $d_i$ is the degree of vertex $i$.
+                
+                The stationary distribution is:
+                $$\pi_i = \frac{d_i}{2|E|}$$
+            </div>
+
+            <div class="exercise">
+                <h4>Exercise 2.2</h4>
+                Prove that the random walk in Example 2.1 has the claimed stationary distribution. Show that for a regular graph (all vertices have the same degree), the stationary distribution is uniform.
+            </div>
+
+            <div class="section-summary">
+                <h4>Section 2 Summary</h4>
+                Probability theory provides the mathematical foundation for uncertainty in RL:
+                <ul>
+                    <li>Random variables model stochastic rewards and transitions</li>
+                    <li>Conditional probability enables policy definitions and Bayesian updates</li>
+                    <li>Markov chains model the sequential decision process</li>
+                    <li>Convergence analysis guides algorithm design</li>
+                </ul>
+            </div>
+
+            <h2 id="calculus">3. Calculus and Optimization</h2>
+
+            <h3 id="multivariable-calculus">3.1 Multivariable Calculus</h3>
+
+            <h4>Partial Derivatives and Gradients</h4>
+
+            <div class="definition">
+                <h4>Definition 3.1: Partial Derivative</h4>
+                For a function $f: \mathbb{R}^n \to \mathbb{R}$, the partial derivative with respect to $x_i$ is:
+                $\frac{\partial f}{\partial x_i} = \lim_{h \to 0} \frac{f(x_1, \ldots, x_i + h, \ldots, x_n) - f(x_1, \ldots, x_n)}{h}$
+            </div>
+
+            <div class="definition">
+                <h4>Definition 3.2: Gradient</h4>
+                The gradient of $f$ is the vector of partial derivatives:
+                $\nabla f(x) = \begin{pmatrix}
+                \frac{\partial f}{\partial x_1} \\
+                \vdots \\
+                \frac{\partial f}{\partial x_n}
+                \end{pmatrix}$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 3.1: Chain Rule (Multivariable)</h4>
+                If $f: \mathbb{R}^m \to \mathbb{R}$ and $g: \mathbb{R}^n \to \mathbb{R}^m$, then for $h = f \circ g$:
+                $\frac{\partial h}{\partial x_j} = \sum_{i=1}^m \frac{\partial f}{\partial y_i} \frac{\partial g_i}{\partial x_j}$
+                In vector form: $\nabla h = J_g^T \nabla f$ where $J_g$ is the Jacobian of $g$.
+            </div>
+
+            <p>This is essential for backpropagation in neural network-based RL algorithms.</p>
+
+            <h4>Taylor Series and Approximation</h4>
+
+            <div class="theorem">
+                <h4>Theorem 3.2: Taylor's Theorem (Multivariable)</h4>
+                For a twice-differentiable function $f: \mathbb{R}^n \to \mathbb{R}$:
+                $f(x + h) = f(x) + \nabla f(x)^T h + \frac{1}{2} h^T \nabla^2 f(x) h + o(\|h\|^2)$
+                where $\nabla^2 f(x)$ is the Hessian matrix.
+            </div>
+
+            <div class="definition">
+                <h4>Definition 3.3: Hessian Matrix</h4>
+                The Hessian is the matrix of second partial derivatives:
+                $[\nabla^2 f(x)]_{ij} = \frac{\partial^2 f}{\partial x_i \partial x_j}$
+            </div>
+
+            <div class="example">
+                <h4>Example 3.1: Quadratic Function Analysis</h4>
+                Consider the quadratic function $f(x) = \frac{1}{2}x^T A x - b^T x + c$ where $A$ is symmetric.
+                
+                Then:
+                $\nabla f(x) = Ax - b$
+                $\nabla^2 f(x) = A$
+                
+                The critical point satisfies $Ax^* = b$, so $x^* = A^{-1}b$ (if $A$ is invertible).
+                If $A \succ 0$, this is a global minimum.
+            </div>
+
+            <h3 id="optimization">3.2 Optimization Theory</h3>
+
+            <h4>Unconstrained Optimization</h4>
+
+            <div class="theorem">
+                <h4>Theorem 3.3: First-Order Necessary Condition</h4>
+                If $x^*$ is a local minimum of $f: \mathbb{R}^n \to \mathbb{R}$ and $f$ is differentiable at $x^*$, then:
+                $\nabla f(x^*) = 0$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 3.4: Second-Order Conditions</h4>
+                Let $f$ be twice differentiable at $x^*$ with $\nabla f(x^*) = 0$.
+                <ul>
+                    <li>If $\nabla^2 f(x^*) \succ 0$, then $x^*$ is a strict local minimum</li>
+                    <li>If $\nabla^2 f(x^*) \prec 0$, then $x^*$ is a strict local maximum</li>
+                    <li>If $\nabla^2 f(x^*)$ is indefinite, then $x^*$ is a saddle point</li>
+                </ul>
+            </div>
+
+            <h4>Convex Optimization</h4>
+
+            <div class="definition">
+                <h4>Definition 3.4: Convex Function</h4>
+                A function $f: \mathbb{R}^n \to \mathbb{R}$ is convex if for all $x, y \in \mathbb{R}^n$ and $\lambda \in [0,1]$:
+                $f(\lambda x + (1-\lambda)y) \leq \lambda f(x) + (1-\lambda) f(y)$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 3.5: Characterization of Convexity</h4>
+                For a twice-differentiable function $f$, the following are equivalent:
+                <ol>
+                    <li>$f$ is convex</li>
+                    <li>$\nabla^2 f(x) \succeq 0$ for all $x$</li>
+                    <li>$f(y) \geq f(x) + \nabla f(x)^T (y - x)$ for all $x, y$</li>
+                </ol>
+            </div>
+
+            <p>Convex functions have the crucial property that any local minimum is global, making optimization much more tractable.</p>
+
+            <div class="theorem">
+                <h4>Theorem 3.6: Global Optimality for Convex Functions</h4>
+                If $f$ is convex and $\nabla f(x^*) = 0$, then $x^*$ is a global minimum.
+            </div>
+
+            <h3 id="lagrange-multipliers">3.3 Lagrange Multipliers</h3>
+
+            <p>Many RL problems involve constrained optimization, such as policy optimization subject to trust region constraints or budget limitations.</p>
+
+            <div class="theorem">
+                <h4>Theorem 3.7: Method of Lagrange Multipliers</h4>
+                Consider the problem:
+                $\min_{x \in \mathbb{R}^n} f(x) \quad \text{subject to} \quad g_i(x) = 0, \; i = 1, \ldots, m$
+                
+                If $x^*$ is a local optimum and the constraint gradients $\{\nabla g_i(x^*)\}$ are linearly independent, then there exist multipliers $\lambda_1, \ldots, \lambda_m$ such that:
+                $\nabla f(x^*) + \sum_{i=1}^m \lambda_i \nabla g_i(x^*) = 0$
+            </div>
+
+            <div class="definition">
+                <h4>Definition 3.5: Lagrangian</h4>
+                The Lagrangian function is:
+                $\mathcal{L}(x, \lambda) = f(x) + \sum_{i=1}^m \lambda_i g_i(x)$
+                Critical points satisfy $\nabla_x \mathcal{L} = 0$ and $\nabla_\lambda \mathcal{L} = 0$.
+            </div>
+
+            <h4>Karush-Kuhn-Tucker (KKT) Conditions</h4>
+
+            <p>For inequality constraints, we need the more general KKT conditions:</p>
+
+            <div class="theorem">
+                <h4>Theorem 3.8: KKT Conditions</h4>
+                Consider:
+                $\min f(x) \quad \text{subject to} \quad g_i(x) \leq 0, \; h_j(x) = 0$
+                
+                If $x^*$ is optimal and constraint qualifications hold, then there exist $\lambda_i \geq 0, \mu_j$ such that:
+                <ol>
+                    <li>$\nabla f(x^*) + \sum_i \lambda_i \nabla g_i(x^*) + \sum_j \mu_j \nabla h_j(x^*) = 0$</li>
+                    <li>$g_i(x^*) \leq 0, h_j(x^*) = 0$ (feasibility)</li>
+                    <li>$\lambda_i \geq 0$ (dual feasibility)</li>
+                    <li>$\lambda_i g_i(x^*) = 0$ (complementary slackness)</li>
+                </ol>
+            </div>
+
+            <div class="exercise">
+                <h4>Exercise 3.1</h4>
+                In portfolio optimization for multi-armed bandits, consider maximizing expected reward $\sum_{i=1}^K w_i \mu_i$ subject to $\sum_{i=1}^K w_i = 1$ and $w_i \geq 0$, where $w_i$ is the probability of selecting arm $i$. Use Lagrange multipliers to find the optimal solution when you know the true means $\mu_i$.
+            </div>
+
+            <h3 id="gradient-methods">3.4 Gradient Methods</h3>
+
+            <h4>Gradient Descent</h4>
+
+            <p>The fundamental algorithm for unconstrained optimization:</p>
+
+            $x_{k+1} = x_k - \alpha_k \nabla f(x_k)$
+
+            <div class="theorem">
+                <h4>Theorem 3.9: Convergence of Gradient Descent</h4>
+                Assume $f$ is $L$-smooth (Lipschitz gradient) and $\mu$-strongly convex. With step size $\alpha \leq \frac{2}{\mu + L}$:
+                $f(x_k) - f^* \leq \left(\frac{L - \mu}{L + \mu}\right)^k (f(x_0) - f^*)$
+                
+                The convergence rate is $O(\kappa^k)$ where $\kappa = \frac{L}{\mu}$ is the condition number.
+            </div>
+
+            <p><strong>Proof Sketch:</strong> Using the smoothness and strong convexity assumptions, we can bound the progress at each iteration. The key insight is that the gradient points in the direction of steepest decrease, and the Lipschitz condition ensures we don't overshoot.</p>
+
+            <h4>Stochastic Gradient Descent</h4>
+
+            <p>In RL, we often work with stochastic objectives. Consider minimizing $f(x) = \mathbb{E}[F(x, \xi)]$ where $\xi$ is random:</p>
+
+            $x_{k+1} = x_k - \alpha_k \nabla F(x_k, \xi_k)$
+
+            <div class="theorem">
+                <h4>Theorem 3.10: SGD Convergence</h4>
+                Under appropriate conditions (unbiased gradients, bounded variance, diminishing step sizes), SGD converges to the optimal solution:
+                $\lim_{k \to \infty} \mathbb{E}[\|x_k - x^*\|^2] = 0$
+                provided $\sum_k \alpha_k = \infty$ and $\sum_k \alpha_k^2 < \infty$.
+            </div>
+
+            <h4>Natural Gradient</h4>
+
+            <p>In policy gradient methods, the natural gradient accounts for the geometry of the policy space:</p>
+
+            <div class="definition">
+                <h4>Definition 3.6: Natural Gradient</h4>
+                The natural gradient is:
+                $\tilde{\nabla}_\theta J(\theta) = G(\theta)^{-1} \nabla_\theta J(\theta)$
+                where $G(\theta)$ is the Fisher Information Matrix:
+                $G(\theta) = \mathbb{E}\left[\nabla_\theta \log \pi(a|s;\theta) \nabla_\theta \log \pi(a|s;\theta)^T\right]$
+            </div>
+
+            <p>This provides a more principled update direction that's invariant to reparametrization of the policy.</p>
+
+            <div class="example">
+                <h4>Example 3.2: Policy Gradient for Softmax Policy</h4>
+                Consider a softmax policy $\pi(a|s;\theta) = \frac{\exp(\theta^T \phi(s,a))}{\sum_{a'} \exp(\theta^T \phi(s,a'))}$.
+                
+                The score function is:
+                $\nabla_\theta \log \pi(a|s;\theta) = \phi(s,a) - \mathbb{E}_{\pi}[\phi(s,\cdot)]$
+                
+                The policy gradient theorem gives:
+                $\nabla_\theta J(\theta) = \mathbb{E}\left[Q^\pi(s,a) \nabla_\theta \log \pi(a|s;\theta)\right]$
+            </div>
+
+            <div class="exercise">
+                <h4>Exercise 3.2</h4>
+                Derive the Fisher Information Matrix for the softmax policy in Example 3.2. Show that the natural gradient update has the form of a weighted least squares problem.
+            </div>
+
+            <div class="section-summary">
+                <h4>Section 3 Summary</h4>
+                Calculus and optimization provide the tools for learning in RL:
+                <ul>
+                    <li>Gradients enable policy improvement and value function updates</li>
+                    <li>Convex optimization guarantees global solutions when applicable</li>
+                    <li>Constrained optimization handles policy constraints and regularization</li>
+                    <li>Stochastic methods adapt to the inherent randomness in RL</li>
+                </ul>
+            </div>
+
+            <h2 id="dynamic-programming">4. Dynamic Programming</h2>
+
+            <p>Dynamic programming forms the theoretical foundation of reinforcement learning, providing the mathematical framework for sequential decision making under uncertainty.</p>
+
+            <h3 id="bellman-equations">4.1 Bellman Equations</h3>
+
+            <div class="definition">
+                <h4>Definition 4.1: Value Functions</h4>
+                For a policy $\pi$ and discount factor $\gamma \in [0,1)$:
+                <ul>
+                    <li>State value function: $V^\pi(s) = \mathbb{E}_\pi\left[\sum_{t=0}^\infty \gamma^t R_{t+1} \mid S_0 = s\right]$</li>
+                    <li>Action value function: $Q^\pi(s,a) = \mathbb{E}_\pi\left[\sum_{t=0}^\infty \gamma^t R_{t+1} \mid S_0 = s, A_0 = a\right]$</li>
+                </ul>
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 4.1: Bellman Equations</h4>
+                The value functions satisfy the recursive relations:
+                $V^\pi(s) = \sum_a \pi(a|s) \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V^\pi(s')]$
+                $Q^\pi(s,a) = \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma \sum_{a'} \pi(a'|s') Q^\pi(s',a')]$
+            </div>
+
+            <p><strong>Proof:</strong> We prove the first equation. By definition:
+            $V^\pi(s) = \mathbb{E}_\pi\left[R_1 + \gamma \sum_{t=1}^\infty \gamma^{t-1} R_{t+1} \mid S_0 = s\right]$
+            
+            Using the law of total expectation conditioning on $A_0$ and $S_1$:
+            $V^\pi(s) = \sum_a \pi(a|s) \sum_{s'} P(s'|s,a) \mathbb{E}_\pi[R_1 + \gamma V^\pi(S_1) \mid S_0 = s, A_0 = a, S_1 = s']$
+            $= \sum_a \pi(a|s) \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V^\pi(s')]$</p>
+
+            <h4>Optimal Value Functions</h4>
+
+            <div class="definition">
+                <h4>Definition 4.2: Optimal Value Functions</h4>
+                $V^*(s) = \max_\pi V^\pi(s), \quad Q^*(s,a) = \max_\pi Q^\pi(s,a)$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 4.2: Bellman Optimality Equations</h4>
+                $V^*(s) = \max_a \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V^*(s')]$
+                $Q^*(s,a) = \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma \max_{a'} Q^*(s',a')]$
+            </div>
+
+            <p>These nonlinear equations uniquely determine the optimal value functions.</p>
+
+            <h4>Existence and Uniqueness</h4>
+
+            <div class="theorem">
+                <h4>Theorem 4.3: Existence of Optimal Policy</h4>
+                For finite MDPs, there exists a deterministic stationary policy $\pi^*$ that is optimal, i.e., $V^{\pi^*}(s) = V^*(s)$ for all $s$.
+            </div>
+
+            <p><strong>Proof Sketch:</strong> The proof uses the compactness of the policy space and continuity arguments. The key insight is that the Bellman operator is a contraction mapping.</p>
+
+            <h3 id="value-iteration">4.2 Value Iteration</h3>
+
+            <p>Value iteration is an algorithm to compute optimal value functions by iteratively applying the Bellman optimality operator.</p>
+
+            <div class="definition">
+                <h4>Definition 4.3: Bellman Optimality Operator</h4>
+                For value function $V: S \to \mathbb{R}$, define:
+                $[T^*V](s) = \max_a \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V(s')]$
+            </div>
+
+            <p>The value iteration algorithm is:
+            $V_{k+1} = T^* V_k$
+            starting from any initial $V_0$.</p>
+
+            <div class="theorem">
+                <h4>Theorem 4.4: Contraction Property</h4>
+                The Bellman optimality operator $T^*$ is a $\gamma$-contraction in the supremum norm:
+                $\|T^* V - T^* U\|_\infty \leq \gamma \|V - U\|_\infty$
+            </div>
+
+            <p><strong>Proof:</strong> For any state $s$:
+            $|[T^*V](s) - [T^*U](s)| = \left|\max_a \sum_{s'} P(s'|s,a)\gamma[V(s') - U(s')] - \max_a \sum_{s'} P(s'|s,a)\gamma[V(s') - U(s')]\right|$
+            
+            Using the property $|\max_i x_i - \max_i y_i| \leq \max_i |x_i - y_i|$:
+            $\leq \max_a \left|\sum_{s'} P(s'|s,a)\gamma[V(s') - U(s')]\right| \leq \gamma \max_{s'} |V(s') - U(s')| = \gamma \|V - U\|_\infty$</p>
+
+            <div class="theorem">
+                <h4>Theorem 4.5: Convergence of Value Iteration</h4>
+                The value iteration sequence converges to $V^*$:
+                $\lim_{k \to \infty} V_k = V^*$
+                with geometric convergence rate:
+                $\|V_k - V^*\|_\infty \leq \gamma^k \|V_0 - V^*\|_\infty$
+            </div>
+
+            <p>This follows immediately from the Banach Fixed Point Theorem since $T^*$ is a contraction mapping on the complete metric space of bounded functions.</p>
+
+            <div class="example">
+                <h4>Example 4.1: Simple Grid World</h4>
+                Consider a $2 \times 2$ grid world with states $\{1,2,3,4\}$ arranged as:
+                $\begin{array}{|c|c|}
+                \hline
+                1 & 2 \\
+                \hline
+                3 & 4 \\
+                \hline
+                \end{array}$
+                
+                Actions are $\{\text{up, down, left, right}\}$ with deterministic transitions. Rewards are $R(s,a,s') = -1$ except $R(4,\cdot,4) = 0$ (terminal state).
+                
+                Value iteration converges to:
+                $V^* = \begin{pmatrix} -3 \\ -2 \\ -2 \\ 0 \end{pmatrix}$
+            </div>
+
+            <h3 id="policy-iteration">4.3 Policy Iteration</h3>
+
+            <p>Policy iteration alternates between policy evaluation and policy improvement.</p>
+
+            <h4>Policy Evaluation</h4>
+
+            <p>Given policy $\pi$, solve the linear system:
+            $V^\pi = T^\pi V^\pi$
+            where $[T^\pi V](s) = \sum_a \pi(a|s) \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V(s')]$.</p>
+
+            <div class="theorem">
+                <h4>Theorem 4.6: Policy Evaluation Convergence</h4>
+                The operator $T^\pi$ is a $\gamma$-contraction, so iterating:
+                $V_{k+1} = T^\pi V_k$
+                converges to $V^\pi$ with rate $O(\gamma^k)$.
+            </div>
+
+            <h4>Policy Improvement</h4>
+
+            <p>Given $V^\pi$, define the improved policy:
+            $\pi'(s) = \arg\max_a \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V^\pi(s')]$</p>
+
+            <div class="theorem">
+                <h4>Theorem 4.7: Policy Improvement Theorem</h4>
+                If $V^\pi(s) \leq Q^\pi(s, \pi'(s))$ for all $s$, then $V^{\pi'}(s) \geq V^\pi(s)$ for all $s$.
+                If the inequality is strict for at least one state, then $V^{\pi'}(s) > V^\pi(s)$ for at least one state.
+            </div>
+
+            <p><strong>Proof:</strong> We have:
+            $V^\pi(s) \leq Q^\pi(s, \pi'(s)) = \mathbb{E}[R_1 + \gamma V^\pi(S_1) \mid S_0 = s, A_0 = \pi'(s)]$
+            
+            Applying $\pi'$ for the second step:
+            $\leq \mathbb{E}[R_1 + \gamma Q^\pi(S_1, \pi'(S_1)) \mid S_0 = s, A_0 = \pi'(s)]$
+            $= \mathbb{E}[R_1 + \gamma R_2 + \gamma^2 V^\pi(S_2) \mid S_0 = s, \text{following } \pi']$
+            
+            Continuing this argument:
+            $\leq \mathbb{E}\left[\sum_{t=0}^\infty \gamma^t R_{t+1} \mid S_0 = s, \text{following } \pi'\right] = V^{\pi'}(s)$</p>
+
+            <div class="theorem">
+                <h4>Theorem 4.8: Policy Iteration Convergence</h4>
+                Policy iteration converges to the optimal policy $\pi^*$ in finitely many steps for finite MDPs.
+            </div>
+
+            <p>The proof relies on the fact that each policy improvement step strictly increases the value function unless the current policy is already optimal, and there are only finitely many deterministic policies.</p>
+
+            <h4>Modified Policy Iteration</h4>
+
+            <p>To reduce computational cost, we can perform incomplete policy evaluation:</p>
+            <ul>
+                <li>Perform $m$ steps of policy evaluation instead of full convergence</li>
+                <li>As $m \to \infty$, this reduces to standard policy iteration</li>
+                <li>As $m = 1$, this becomes value iteration</li>
+            </ul>
+
+            <div class="exercise">
+                <h4>Exercise 4.1</h4>
+                Prove that value iteration is equivalent to policy iteration with a single step of policy evaluation. Specifically, show that if $V_k$ is the value function after $k$ iterations of value iteration, then the greedy policy with respect to $V_k$ followed by one step of policy evaluation yields $V_{k+1}$.
+            </div>
+
+            <h4>Generalized Policy Iteration</h4>
+
+            <p>The general framework that encompasses most RL algorithms:</p>
+
+            <div class="definition">
+                <h4>Definition 4.4: Generalized Policy Iteration</h4>
+                Any algorithm that maintains estimates of both value functions and policies, where:
+                <ul>
+                    <li>The value function approximates the value of the current policy</li>
+                    <li>The policy is improved with respect to the current value function</li>
+                </ul>
+            </div>
+
+            <p>This framework includes temporal difference learning, Q-learning, actor-critic methods, and many others.</p>
+
+            <div class="section-summary">
+                <h4>Section 4 Summary</h4>
+                Dynamic programming provides the mathematical foundation for RL:
+                <ul>
+                    <li>Bellman equations characterize optimal value functions</li>
+                    <li>Contraction mapping theory guarantees convergence</li>
+                    <li>Value and policy iteration provide computational algorithms</li>
+                    <li>Generalized policy iteration unifies most RL approaches</li>
+                </ul>
+            </div>
+
+            <h2 id="functional-analysis">5. Functional Analysis</h2>
+
+            <p>Functional analysis provides the mathematical framework for understanding convergence and approximation in infinite-dimensional spaces, crucial for function approximation in RL.</p>
+
+            <h3 id="metric-spaces">5.1 Metric Spaces</h3>
+
+            <div class="definition">
+                <h4>Definition 5.1: Metric Space</h4>
+                A metric space is a pair $(X, d)$ where $X$ is a set and $d: X \times X \to \mathbb{R}$ satisfies:
+                <ul>
+                    <li>$d(x, y) \geq 0$ with equality iff $x = y$</li>
+                    <li>$d(x, y) = d(y, x)$ (symmetry)</li>
+                    <li>$d(x, z) \leq d(x, y) + d(y, z)$ (triangle inequality)</li>
+                </ul>
+            </div>
+
+            <div class="example">
+                <h4>Example 5.1: Common Metrics in RL</h4>
+                <ul>
+                    <li>Supremum norm: $d(f, g) = \sup_{s \in S} |f(s) - g(s)|$</li>
+                    <li>$L^2$ norm: $d(f, g) = \sqrt{\int (f(s) - g(s))^2 \, d\mu(s)}$</li>
+                    <li>Wasserstein distance for probability distributions</li>
+                </ul>
+            </div>
+
+            <div class="definition">
+                <h4>Definition 5.2: Completeness</h4>
+                A metric space $(X, d)$ is complete if every Cauchy sequence converges to a point in $X$. A sequence $\{x_n\}$ is Cauchy if:
+                $\forall \epsilon > 0, \exists N : n, m \geq N \Rightarrow d(x_n, x_m) < \epsilon$
+            </div>
+
+            <div class="theorem">
+                <h4>Theorem 5.1: Banach Fixed Point Theorem</h4>
+                Let $(X, d)$ be a complete metric space and $T: X \to X$ be a contraction mapping (i.e., $d(Tx, Ty) \leq \alpha d(x, y)$ for some $\alpha < 1$). Then:
+                <ol>
+                    <li>$T$ has a unique fixed point $x^* \in X$</li>
+                    <li>For any $x_0 \in X$, the sequence $x_{n+1} = Tx_n$ converges to $x^*$</li>
+                    <li>$d(x_n,
+</body>
+</html>

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math for Reinforcement Learning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <!-- MathJax Configuration -->
+    <script>
+        MathJax = {
+          tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']]
+          },
+          svg: {
+            fontCache: 'global'
+          }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .content h2 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+        }
+        .content h3 {
+            font-size: 1.4rem;
+            font-weight: 500;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .content p, .content ul {
+            line-height: 1.8;
+            margin-bottom: 1rem;
+        }
+        .content .exercise {
+            background-color: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            padding: 1rem;
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .content .exercise-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-white text-gray-800">
+
+    <div class="flex min-h-screen">
+        <!-- Navigation Pane -->
+        <aside class="w-1/4 md:w-1/5 lg:w-1/6 bg-gray-50 p-6 fixed h-full overflow-y-auto">
+            <h1 class="text-xl font-bold mb-6 text-gray-900">Math for RL</h1>
+            <nav>
+                <ul class="space-y-2">
+                    <li><a href="#introduction" class="text-gray-600 hover:text-blue-600 font-medium">Introduction</a></li>
+                    <li>
+                        <a href="#linear-algebra" class="text-gray-600 hover:text-blue-600 font-medium">1. Linear Algebra</a>
+                        <ul class="ml-4 mt-2 space-y-1 text-sm">
+                            <li><a href="#la-vectors" class="text-gray-500 hover:text-blue-500">1.1 Vectors & Spaces</a></li>
+                            <li><a href="#la-matrices" class="text-gray-500 hover:text-blue-500">1.2 Matrices</a></li>
+                            <li><a href="#la-eigen" class="text-gray-500 hover:text-blue-500">1.3 Eigen-stuff</a></li>
+                            <li><a href="#la-exercises" class="text-gray-500 hover:text-blue-500">1.4 Exercises</a></li>
+                        </ul>
+                    </li>
+                    <li>
+                        <a href="#probability" class="text-gray-600 hover:text-blue-600 font-medium">2. Probability Theory</a>
+                         <ul class="ml-4 mt-2 space-y-1 text-sm">
+                            <li><a href="#prob-basics" class="text-gray-500 hover:text-blue-500">2.1 Basics</a></li>
+                            <li><a href="#prob-rv" class="text-gray-500 hover:text-blue-500">2.2 Random Variables</a></li>
+                            <li><a href="#prob-expectation" class="text-gray-500 hover:text-blue-500">2.3 Expectation</a></li>
+                             <li><a href="#prob-markov" class="text-gray-500 hover:text-blue-500">2.4 Markov Processes</a></li>
+                            <li><a href="#prob-exercises" class="text-gray-500 hover:text-blue-500">2.5 Exercises</a></li>
+                        </ul>
+                    </li>
+                    <li>
+                        <a href="#calculus" class="text-gray-600 hover:text-blue-600 font-medium">3. Calculus</a>
+                        <ul class="ml-4 mt-2 space-y-1 text-sm">
+                            <li><a href="#calc-gradient" class="text-gray-500 hover:text-blue-500">3.1 Gradient</a></li>
+                            <li><a href="#calc-optimization" class="text-gray-500 hover:text-blue-500">3.2 Optimization</a></li>
+                            <li><a href="#calc-exercises" class="text-gray-500 hover:text-blue-500">3.3 Exercises</a></li>
+                        </ul>
+                    </li>
+                    <li>
+                        <a href="#dp" class="text-gray-600 hover:text-blue-600 font-medium">4. Dynamic Programming</a>
+                        <ul class="ml-4 mt-2 space-y-1 text-sm">
+                            <li><a href="#dp-bellman" class="text-gray-500 hover:text-blue-500">4.1 Bellman Equations</a></li>
+                            <li><a href="#dp-vi" class="text-gray-500 hover:text-blue-500">4.2 Value Iteration</a></li>
+                            <li><a href="#dp-pi" class="text-gray-500 hover:text-blue-500">4.3 Policy Iteration</a></li>
+                            <li><a href="#dp-exercises" class="text-gray-500 hover:text-blue-500">4.4 Exercises</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="w-3/4 md:w-4/5 lg:w-5/6 ml-auto p-8 content">
+            <section id="introduction">
+                <h2>Introduction</h2>
+                <p>
+                    Welcome to the mathematical foundations of Reinforcement Learning (RL). RL is a field of machine learning that is heavily based on mathematical concepts. A strong foundation in these concepts is crucial for understanding, designing, and implementing RL algorithms. This tutorial is designed for learners with an undergraduate STEM background and aims to provide a deep and detailed exploration of the necessary mathematics.
+                </p>
+                <p>
+                    We will cover four key areas:
+                </p>
+                <ul class="list-disc list-inside">
+                    <li><b>Linear Algebra:</b> The language of data. Essential for representing states, actions, and policies.</li>
+                    <li><b>Probability Theory:</b> The framework for uncertainty. RL operates in stochastic environments, making probability theory indispensable.</li>
+                    <li><b>Calculus:</b> The tool for optimization. Used to find the best policies by optimizing performance metrics.</li>
+                    <li><b>Dynamic Programming:</b> The method for solving sequential decision problems, which is the core of many RL algorithms.</li>
+                </ul>
+                <p>
+                    Each section includes detailed explanations and exercises to test your understanding. Let's begin!
+                </p>
+            </section>
+
+            <section id="linear-algebra">
+                <h2>1. Linear Algebra</h2>
+                <p>Linear algebra is fundamental to RL as it provides the tools to work with high-dimensional data. In RL, states and actions are often represented as vectors, and the environment's dynamics can be described by matrices.</p>
+
+                <h3 id="la-vectors">1.1 Vectors and Vector Spaces</h3>
+                <p>A <strong>vector</strong> is an object that has both a magnitude and a direction. Geometrically, we can picture a vector as a directed line segment. In the context of RL, a vector can represent the state of an environment. For example, in a simple grid world, the state could be a vector `[x, y]` representing the agent's coordinates.</p>
+                <p>A <strong>vector space</strong> is a collection of vectors, which is closed under finite vector addition and scalar multiplication. The set of all n-dimensional real vectors, $\mathbb{R}^n$, is the most common vector space we'll encounter.</p>
+                <p>The <strong>dot product</strong> (or inner product) of two vectors $v, w \in \mathbb{R}^n$ is defined as:
+                    $$ v \cdot w = v^T w = \sum_{i=1}^{n} v_i w_i $$
+                    The dot product gives a scalar value. The magnitude (or norm) of a vector is $\|v\| = \sqrt{v \cdot v}$. The angle $\theta$ between two vectors is given by $v \cdot w = \|v\| \|w\| \cos(\theta)$. Two vectors are <strong>orthogonal</strong> if their dot product is zero.
+                </p>
+
+                <h3 id="la-matrices">1.2 Matrices and Linear Transformations</h3>
+                <p>A <strong>matrix</strong> is a rectangular array of numbers. An $m \times n$ matrix $A$ has $m$ rows and $n$ columns. Matrices can represent linear transformations, which are functions between vector spaces that preserve vector addition and scalar multiplication. In RL, transition probability matrices describe the dynamics of an environment.</p>
+                <p>The product of an $m \times n$ matrix $A$ and an $n \times p$ matrix $B$ is an $m \times p$ matrix $C=AB$ where:
+                    $$ C_{ij} = \sum_{k=1}^{n} A_{ik} B_{kj} $$
+                </p>
+                <p>The <strong>transpose</strong> of a matrix $A$, denoted $A^T$, is obtained by swapping its rows and columns. A square matrix $A$ is <strong>symmetric</strong> if $A = A^T$. A square matrix is <strong>invertible</strong> if there exists a matrix $A^{-1}$ such that $AA^{-1} = A^{-1}A = I$, where $I$ is the identity matrix.</p>
+
+                <h3 id="la-eigen">1.3 Eigenvalues and Eigenvectors</h3>
+                <p>For a square matrix $A$, an <strong>eigenvector</strong> $v$ and its corresponding <strong>eigenvalue</strong> $\lambda$ are a vector and scalar that satisfy the equation:
+                    $$ Av = \lambda v $$
+                </p>
+                <p>This means that when the linear transformation $A$ is applied to $v$, the vector's direction is unchanged, and it is only scaled by the factor $\lambda$. Eigenvalues and eigenvectors are crucial for understanding the behavior of linear transformations and are used in various analyses in RL, such as the convergence of value iteration.</p>
+                <p>To find eigenvalues, we solve the characteristic equation $\det(A - \lambda I) = 0$. For each eigenvalue, we then solve $(A - \lambda I)v = 0$ to find the corresponding eigenvectors.</p>
+
+                <h3 id="la-exercises">1.4 Exercises</h3>
+                <div class="exercise">
+                    <p class="exercise-title">Exercise 1.1</p>
+                    <p>Let $v = [1, 2, 3]^T$ and $w = [4, -5, 6]^T$. Calculate $v \cdot w$, $\|v\|$, and the angle $\theta$ between them.</p>
+                </div>
+                <div class="exercise">
+                    <p class="exercise-title">Exercise 1.2</p>
+                    <p>Let $A = \begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix}$ and $B = \begin{pmatrix} 5 & 6 \\ 7 & 8 \end{pmatrix}$. Calculate $AB$ and $BA$. Is matrix multiplication commutative?</p>
+                </div>
+                 <div class="exercise">
+                    <p class="exercise-title">Exercise 1.3</p>
+                    <p>Find the eigenvalues and eigenvectors of the matrix $A = \begin{pmatrix} 2 & 1 \\ 1 & 2 \end{pmatrix}$.</p>
+                </div>
+            </section>
+
+            <section id="probability">
+                <h2>2. Probability Theory</h2>
+                <p>RL agents operate in uncertain environments. Probability theory provides the mathematical framework to reason about this uncertainty.</p>
+
+                <h3 id="prob-basics">2.1 Basic Concepts</h3>
+                <p>A <strong>sample space</strong> $\Omega$ is the set of all possible outcomes of an experiment. An <strong>event</strong> is a subset of the sample space. A <strong>probability measure</strong> $P$ is a function that assigns a probability $P(E)$ to each event $E$, satisfying three axioms:</p>
+                <ol class="list-decimal list-inside">
+                    <li>$P(E) \geq 0$ for any event $E$.</li>
+                    <li>$P(\Omega) = 1$.</li>
+                    <li>For any sequence of disjoint events $E_1, E_2, \dots$, $P(\cup_{i=1}^\infty E_i) = \sum_{i=1}^\infty P(E_i)$.</li>
+                </ol>
+                <p><strong>Conditional probability</strong> is the probability of an event occurring given that another event has already occurred. The conditional probability of $A$ given $B$ is:
+                    $$ P(A|B) = \frac{P(A \cap B)}{P(B)}, \text{ provided } P(B) > 0 $$
+                </p>
+                <p><strong>Bayes' Theorem</strong> relates the conditional probabilities of two events:
+                    $$ P(A|B) = \frac{P(B|A)P(A)}{P(B)} $$
+                </p>
+
+                <h3 id="prob-rv">2.2 Random Variables</h3>
+                <p>A <strong>random variable</strong> (RV) is a variable whose value is a numerical outcome of a random phenomenon. We distinguish between <strong>discrete</strong> RVs (taking a finite or countably infinite number of values) and <strong>continuous</strong> RVs (taking any value in a given range).</p>
+                <p>The <strong>probability mass function (PMF)</strong> $p(x)$ of a discrete RV $X$ gives the probability that $X$ is equal to some value $x$, $p(x) = P(X=x)$. The <strong>probability density function (PDF)</strong> $f(x)$ of a continuous RV $X$ is a function such that the probability of $X$ falling within an interval is given by the integral of the function over that interval:
+                    $$ P(a \leq X \leq b) = \int_a^b f(x) dx $$
+                </p>
+
+                <h3 id="prob-expectation">2.3 Expectation, Variance, and Covariance</h3>
+                <p>The <strong>expected value</strong> (or mean) of a random variable is the long-run average value of repetitions of the experiment it represents. It's a weighted average of the possible values.
+                    <br>For a discrete RV $X$: $E[X] = \sum_x x P(X=x)$
+                    <br>For a continuous RV $X$: $E[X] = \int_{-\infty}^{\infty} x f(x) dx$
+                </p>
+                <p>The <strong>variance</strong> measures the spread of the random variable's values around the mean:
+                    $$ \text{Var}(X) = E[(X - E[X])^2] = E[X^2] - (E[X])^2 $$
+                </p>
+                <p>The <strong>covariance</strong> measures the joint variability of two random variables:
+                    $$ \text{Cov}(X, Y) = E[(X - E[X])(Y - E[Y])] $$
+                </p>
+
+                <h3 id="prob-markov">2.4 Markov Processes</h3>
+                <p>A key concept in RL is the <strong>Markov property</strong>, which states that the future is independent of the past given the present. A stochastic process has the Markov property if the conditional probability distribution of future states of the process depends only upon the present state, not on the sequence of events that preceded it.</p>
+                <p>A <strong>Markov Chain</strong> is a sequence of random variables $X_1, X_2, \dots$ with the Markov property. A <strong>Markov Decision Process (MDP)</strong> is a Markov chain with actions and rewards. It's the mathematical framework for modeling decision-making in RL.</p>
+                An MDP is defined by a tuple $(S, A, P, R, \gamma)$:
+                <ul class="list-disc list-inside">
+                    <li>$S$: A set of states.</li>
+                    <li>$A$: A set of actions.</li>
+                    <li>$P(s'|s, a)$: The probability of transitioning to state $s'$ from state $s$ after taking action $a$.</li>
+                    <li>$R(s, a, s')$: The reward received after transitioning from $s$ to $s'$ due to action $a$.</li>
+                    <li>$\gamma \in [0, 1]$: The discount factor, which trades off immediate vs. future rewards.</li>
+                </ul>
+
+                <h3 id="prob-exercises">2.5 Exercises</h3>
+                <div class="exercise">
+                    <p class="exercise-title">Exercise 2.1</p>
+                    <p>A fair six-sided die is rolled. Let $A$ be the event that the outcome is even, and $B$ be the event that the outcome is greater than 3. Calculate $P(A)$, $P(B)$, and $P(A|B)$.</p>
+                </div>
+                <div class="exercise">
+                    <p class="exercise-title">Exercise 2.2</p>
+                    <p>Let $X$ be a discrete random variable with PMF given by $P(X=1)=0.2$, $P(X=2)=0.5$, $P(X=3)=0.3$. Calculate $E[X]$ and $\text{Var}(X)$.</p>
+                </div>
+                 <div class="exercise">
+                    <p class="exercise-title">Exercise 2.3</p>
+                    <p>Explain the Markov property in your own words. Why is it important for reinforcement learning?</p>
+                </div>
+            </section>
+
+            <section id="calculus">
+                <h2>3. Calculus</h2>
+                <p>Calculus, particularly multivariate calculus, is the engine of optimization in machine learning and RL. It allows us to find optimal policies by adjusting parameters to maximize rewards.</p>
+
+                <h3 id="calc-gradient">3.1 The Gradient</h3>
+                <p>For a multivariable function $f: \mathbb{R}^n \to \mathbb{R}$, the <strong>gradient</strong>, denoted $\nabla f$, is a vector of its partial derivatives:
+                    $$ \nabla f(x) = \left[ \frac{\partial f}{\partial x_1}, \frac{\partial f}{\partial x_2}, \dots, \frac{\partial f}{\partial x_n} \right]^T $$
+                </p>
+                <p>The gradient vector points in the direction of the steepest ascent of the function. This property is the basis for <strong>gradient ascent</strong> (for maximization) and <strong>gradient descent</strong> (for minimization), which are iterative optimization algorithms used to train many machine learning models, including the policy networks in RL.</p>
+                <p>The update rule for gradient ascent is:
+                    $$ \theta_{t+1} = \theta_t + \alpha \nabla J(\theta_t) $$
+                    where $\theta$ are the parameters we are optimizing, $J(\theta)$ is the objective function (e.g., expected total reward), and $\alpha$ is the learning rate.
+                </p>
+
+                <h3 id="calc-optimization">3.2 Optimization and Lagrange Multipliers</h3>
+                <p>Many problems in RL can be formulated as constrained optimization problems. For example, we might want to maximize a reward function subject to certain constraints on the policy.</p>
+                <p>The method of <strong>Lagrange multipliers</strong> is a strategy for finding the local maxima and minima of a function subject to equality constraints. For a problem of the form:
+                    <br>Maximize $f(x)$
+                    <br>Subject to $g(x) = c$
+                </p>
+                <p>We introduce a new variable $\lambda$ called a Lagrange multiplier and study the Lagrangian function:
+                    $$ \mathcal{L}(x, \lambda) = f(x) - \lambda(g(x) - c) $$
+                </p>
+                <p>We then find the critical points of $\mathcal{L}$ by setting its gradient to zero: $\nabla_{x, \lambda} \mathcal{L}(x, \lambda) = 0$.</p>
+
+                <h3 id="calc-exercises">3.3 Exercises</h3>
+                <div class="exercise">
+                    <p class="exercise-title">Exercise 3.1</p>
+                    <p>Find the gradient of the function $f(x, y) = x^2y + \sin(y)$.</p>
+                </div>
+                <div class="exercise">
+                    <p class="exercise-title">Exercise 3.2</p>
+                    <p>Describe the difference between gradient ascent and gradient descent. When would you use each?</p>
+                </div>
+                <div class="exercise">
+                    <p class="exercise-title">Exercise 3.3</p>
+                    <p>Use the method of Lagrange multipliers to find the maximum value of $f(x, y) = 4x + 3y$ subject to the constraint $x^2 + y^2 = 25$.</p>
+                </div>
+            </section>
+
+            <section id="dp">
+                <h2>4. Dynamic Programming</h2>
+                <p>Dynamic Programming (DP) refers to a collection of algorithms that can be used to compute optimal policies given a perfect model of the environment as an MDP. Although DP is not always practical due to its computational expense and the requirement of a model, it provides a theoretical foundation for many RL algorithms.</p>
+
+                <h3 id="dp-bellman">4.1 The Bellman Equations</h3>
+                <p>The <strong>Bellman equations</strong> are a set of equations that decompose the value of a state or a state-action pair into the immediate reward plus the discounted value of the subsequent state(s). They are fundamental to RL.</p>
+                <p>The <strong>state-value function</strong> $V^\pi(s)$ is the expected return starting from state $s$ and following policy $\pi$:
+                    $$ V^\pi(s) = E_\pi[G_t | S_t = s] = E_\pi \left[ \sum_{k=0}^{\infty} \gamma^k R_{t+k+1} | S_t = s \right] $$
+                </p>
+                <p>The Bellman equation for $V^\pi(s)$ is:
+                    $$ V^\pi(s) = \sum_{a} \pi(a|s) \sum_{s'} P(s'|s, a) [R(s, a, s') + \gamma V^\pi(s')] $$
+                </p>
+                <p>The <strong>action-value function</strong> $Q^\pi(s, a)$ is the expected return starting from state $s$, taking action $a$, and then following policy $\pi$:
+                    $$ Q^\pi(s, a) = E_\pi[G_t | S_t = s, A_t = a] $$
+                </p>
+                <p>The Bellman equation for $Q^\pi(s, a)$ is:
+                    $$ Q^\pi(s, a) = \sum_{s'} P(s'|s, a) [R(s, a, s') + \gamma \sum_{a'} \pi(a'|s') Q^\pi(s', a')] $$
+                </p>
+                <p>The <strong>Bellman optimality equations</strong> define the optimal value functions, $V^*(s)$ and $Q^*(s, a)$, which are the maximum possible values achievable from a state or state-action pair.
+                    $$ V^*(s) = \max_{a} \sum_{s'} P(s'|s, a) [R(s, a, s') + \gamma V^*(s')] $$
+                    $$ Q^*(s, a) = \sum_{s'} P(s'|s, a) [R(s, a, s') + \gamma \max_{a'} Q^*(s', a')] $$
+                </p>
+
+                <h3 id="dp-vi">4.2 Value Iteration</h3>
+                <p><strong>Value Iteration</strong> is a DP algorithm that finds the optimal state-value function by iteratively applying the Bellman optimality update. It starts with an arbitrary value function $V_0$ and updates it as follows:
+                    $$ V_{k+1}(s) = \max_{a} \sum_{s'} P(s'|s, a) [R(s, a, s') + \gamma V_k(s')] $$
+                </p>
+                <p>This process is guaranteed to converge to the optimal value function $V^*$ as $k \to \infty$.</p>
+
+                <h3 id="dp-pi">4.3 Policy Iteration</h3>
+                <p><strong>Policy Iteration</strong> is another DP algorithm that finds an optimal policy. It alternates between two steps:</p>
+                <ol class="list-decimal list-inside">
+                    <li><strong>Policy Evaluation:</strong> Given a policy $\pi$, compute the state-value function $V^\pi$. This is done by solving the system of linear equations given by the Bellman equation for $V^\pi$.</li>
+                    <li><strong>Policy Improvement:</strong> Improve the policy by acting greedily with respect to $V^\pi$. For each state $s$, the new policy $\pi'$ is:
+                        $$ \pi'(s) = \arg\max_{a} \sum_{s'} P(s'|s, a) [R(s, a, s') + \gamma V^\pi(s')] $$
+                    </li>
+                </ol>
+                <p>This process is also guaranteed to converge to an optimal policy.</p>
+
+                <h3 id="dp-exercises">4.4 Exercises</h3>
+                <div class="exercise">
+                    <p class="exercise-title">Exercise 4.1</p>
+                    <p>What is the key difference between the Bellman equation for a policy $\pi$ and the Bellman optimality equation?</p>
+                </div>
+                <div class="exercise">
+                    <p class="exercise-title">Exercise 4.2</p>
+                    <p>Consider a simple two-state MDP. State 1 has one action that transitions to state 2 with probability 1 and gives a reward of +1. State 2 has one action that transitions back to state 1 with probability 1 and gives a reward of +2. Let $\gamma = 0.9$. Start with $V_0(1)=0, V_0(2)=0$ and perform two iterations of Value Iteration. What are $V_2(1)$ and $V_2(2)$?</p>
+                </div>
+                 <div class="exercise">
+                    <p class="exercise-title">Exercise 4.3</p>
+                    <p>Compare and contrast Value Iteration and Policy Iteration. What are the potential advantages of one over the other?</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+</body>
+</html>
