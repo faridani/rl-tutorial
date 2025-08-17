@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 5 – Multi‑Armed Bandits</title>
+  <style>
+    body {
+      font-family: "Georgia", "Times New Roman", serif;
+      background: #ffffff;
+      color: #333333;
+      line-height: 1.6;
+      margin: 40px;
+    }
+    h1, h2, h3 {
+      color: #2a5d84;
+    }
+    pre {
+      background: #f8f8f8;
+      border: 1px solid #e0e0e0;
+      padding: 10px;
+      overflow-x: auto;
+    }
+    code {
+      font-family: "Courier New", monospace;
+      color: #c7254e;
+    }
+    .citation {
+      font-size: 0.9em;
+      color: #555555;
+    }
+  </style>
+</head>
+<body>
+  <h1>Chapter 5: Multi‑Armed Bandits</h1>
+
+  <p>The multi‑armed bandit problem is a classical decision‑making problem that illustrates the conflict between exploration and exploitation. Imagine a gambler faced with several slot machines (arms), each offering an unknown payoff distribution. At each time step, the gambler must decide which arm to pull in order to maximize accumulated reward over time. The challenge lies in discovering promising machines (exploration) while simultaneously exploiting the best‑known machine (exploitation)【79752402714881†L449-L465】. Bandit problems capture essential ideas behind online advertising, clinical trials and adaptive pricing where decisions must be made sequentially under uncertainty.</p>
+
+  <h2>5.1 ε‑Greedy Strategies</h2>
+  <p>A simple class of algorithms for multi‑armed bandits is the <em>ε‑greedy</em> family. These algorithms maintain an estimate of the expected reward for each arm and choose the arm with the highest estimated value most of the time. To ensure adequate exploration, the algorithm occasionally selects a random arm. In the basic ε‑greedy strategy, the best arm is selected with probability \(1-\epsilon\), and a random arm is selected with probability \(\epsilon\)【79752402714881†L449-L463】. A typical choice is \(\epsilon=0.1\), but in practice the parameter can be tuned or decayed over time. Variants such as ε‑first (pure exploration for the first \(\epsilon N\) pulls) or ε‑decreasing (gradually reducing \(\epsilon\) as more data are gathered) follow similar principles【79752402714881†L455-L464】.</p>
+  <p>The exploration‑exploitation trade‑off is central to bandit problems. Always choosing the currently best arm may lead to sub‑optimal long‑term performance if early observations are noisy. On the other hand, exploring too often can waste resources on arms that are clearly poor. ε‑greedy methods strike a compromise by mixing greedy selection with random exploration. As the number of pulls grows, the estimation accuracy improves and the algorithm becomes increasingly confident in its recommendations.</p>
+  <p>Below is a simple implementation of the ε‑greedy algorithm in Python. We simulate a pricing scenario where a firm displays different prices (arms) for a product and observes binary rewards (purchase = 1, no purchase = 0). Each arm has an unknown purchase probability. The algorithm maintains sample‑average estimates of the reward for each arm and updates them incrementally after every pull.</p>
+  <pre><code class="language-python">import numpy as np
+
+def epsilon_greedy_bandit(n_arms, n_rounds, epsilon, true_probs):
+    """
+    Simulate an ε‑greedy multi‑armed bandit.
+    :param n_arms: number of price options
+    :param n_rounds: number of customer interactions
+    :param epsilon: probability of exploring
+    :param true_probs: array of true purchase probabilities for each arm
+    :return: rewards over time and chosen arms
+    """
+    estimates = np.zeros(n_arms)     # sample‑average estimates Q_t(a)
+    counts = np.zeros(n_arms)        # number of times each arm pulled
+    rewards = []
+    chosen_arms = []
+    for t in range(n_rounds):
+        if np.random.rand() &lt; epsilon:
+            # explore uniformly at random
+            arm = np.random.randint(0, n_arms)
+        else:
+            # exploit: choose the arm with the highest estimated value
+            arm = np.argmax(estimates)
+        # simulate reward from Bernoulli distribution
+        reward = np.random.rand() &lt; true_probs[arm]
+        # update estimates using incremental formula
+        counts[arm] += 1
+        estimates[arm] += (reward - estimates[arm]) / counts[arm]
+        # record outcome
+        chosen_arms.append(arm)
+        rewards.append(reward)
+    return rewards, chosen_arms
+
+# Example usage
+np.random.seed(0)
+true_purchase_probabilities = [0.1, 0.15, 0.3, 0.25]
+rewards, arms_played = epsilon_greedy_bandit(
+    n_arms=len(true_purchase_probabilities),
+    n_rounds=5000,
+    epsilon=0.1,
+    true_probs=true_purchase_probabilities,
+)
+print(f"Average reward: {np.mean(rewards):.3f}")</code></pre>
+  <p>This code repeatedly plays one of several pricing options. When exploring, a random price is selected; when exploiting, the currently most profitable price is chosen. Over time the algorithm converges to the best‑performing price and the average reward increases.</p>
+
+  <h2>5.2 Upper Confidence Bound (UCB)</h2>
+  <p>The upper‑confidence bound (UCB) algorithm addresses the exploration‑exploitation dilemma using a principled confidence interval on the estimated reward for each arm. Instead of choosing a random arm with fixed probability, UCB selects the arm with the highest sum of its estimated value and an exploration bonus. The exploration bonus shrinks as the arm is pulled more often. According to GeeksforGeeks, UCB uses the uncertainty in the action‑value estimates to drive exploration: the arm chosen is the one with the highest estimated value plus an upper‑confidence bound term【651727890411785†L133-L166】. The algorithm follows an <em>optimism in the face of uncertainty</em> principle: if you are uncertain about an arm, assume it could be very good and explore it to reduce uncertainty【651727890411785†L152-L165】.</p>
+  <p>Specifically, UCB1 defines the selection rule for arm <em>a</em> at round <em>t</em> as
+  \[
+  a_t = \underset{a}{\arg\max} \left(\hat{Q}_t(a) + c\sqrt{\frac{\ln(t+1)}{N_t(a)}}\right),
+  \]
+  where \(\hat{Q}_t(a)\) is the sample‑average reward for arm <em>a</em>, \(N_t(a)\) is the number of times arm <em>a</em> has been pulled, and <em>c</em> is a constant controlling the amount of exploration. The square‑root term grows large when an arm has been selected infrequently, encouraging exploration, and shrinks when the arm has been pulled many times, favouring exploitation. UCB gradually shifts from exploration to exploitation as more data are collected【651727890411785†L152-L166】.</p>
+  <p>The following Python function implements the UCB1 algorithm for a bandit with Bernoulli rewards. As before, this example models a decision‑maker selecting among different pricing levels. Note how the exploration bonus uses the natural logarithm of the number of rounds to balance exploration across arms.</p>
+  <pre><code class="language-python">def ucb1_bandit(n_arms, n_rounds, true_probs, c=2):
+    estimates = np.zeros(n_arms)
+    counts = np.zeros(n_arms)
+    rewards = []
+    chosen_arms = []
+    # pull each arm once to initialize counts
+    for arm in range(n_arms):
+        reward = np.random.rand() &lt; true_probs[arm]
+        counts[arm] += 1
+        estimates[arm] = reward
+        chosen_arms.append(arm)
+        rewards.append(reward)
+    # run remaining rounds
+    for t in range(n_arms, n_rounds):
+        ucb_values = estimates + c * np.sqrt(np.log(t + 1) / counts)
+        arm = np.argmax(ucb_values)
+        reward = np.random.rand() &lt; true_probs[arm]
+        counts[arm] += 1
+        estimates[arm] += (reward - estimates[arm]) / counts[arm]
+        chosen_arms.append(arm)
+        rewards.append(reward)
+    return rewards, chosen_arms
+
+# Example usage
+np.random.seed(0)
+rewards_ucb, arms_ucb = ucb1_bandit(
+    n_arms=len(true_purchase_probabilities),
+    n_rounds=5000,
+    true_probs=true_purchase_probabilities,
+    c=2
+)
+print(f"UCB average reward: {np.mean(rewards_ucb):.3f}")</code></pre>
+  <p>UCB generally performs better than basic ε‑greedy because it adapts the amount of exploration to the amount of information available for each arm. Initially it explores widely; later it focuses on promising arms once their confidence intervals shrink.</p>
+
+  <h2>5.3 Thompson Sampling</h2>
+  <p>Thompson sampling, also known as <em>posterior sampling</em> or <em>probability matching</em>, is a Bayesian algorithm that addresses the exploration‑exploitation dilemma by sampling from the posterior distribution of each arm’s reward. At each round the agent draws a random set of parameters from its posterior belief about the reward distributions and selects the arm that is optimal with respect to the sampled parameters【787936939409747†L137-L141】. Conceptually, the player instantiates its beliefs randomly in each round according to the posterior distribution and then acts optimally according to them【787936939409747†L180-L187】. This randomization naturally balances exploration and exploitation: arms with uncertain parameters are sampled more widely, while arms with well‑estimated parameters are chosen more often.</p>
+  <p>The key ingredients of Thompson sampling are a likelihood function, a prior distribution over parameters, and the posterior distribution given the data【787936939409747†L156-L167】. For Bernoulli rewards (purchase/no‑purchase), a conjugate Beta prior is convenient. Suppose the reward for arm <i>i</i> follows a Bernoulli distribution with success probability \(\theta_i\). We place a Beta(\(\alpha_i, \beta_i\)) prior on \(\theta_i\). After each pull the posterior remains Beta with updated parameters: \(\alpha_i\) increases by one when a reward of 1 is observed, and \(\beta_i\) increases by one when a reward of 0 is observed. Thompson sampling samples \(\theta_i\) from Beta(\(\alpha_i, \beta_i\)) for each arm and chooses the arm with the highest sampled value.</p>
+  <p>Below is an implementation of Thompson sampling for Bernoulli bandits. The function maintains Beta priors for each arm and updates them after each pull. Because the sampling step is randomized, the algorithm automatically explores uncertain arms while gravitating toward high‑reward arms over time.</p>
+  <pre><code class="language-python">def thompson_sampling_bandit(n_arms, n_rounds, true_probs, alpha=1.0, beta=1.0):
+    alphas = np.full(n_arms, alpha)
+    betas = np.full(n_arms, beta)
+    rewards = []
+    chosen_arms = []
+    for t in range(n_rounds):
+        # sample a theta for each arm from its Beta posterior
+        samples = np.random.beta(alphas, betas)
+        arm = np.argmax(samples)
+        reward = np.random.rand() &lt; true_probs[arm]
+        # update Beta posterior parameters
+        if reward:
+            alphas[arm] += 1
+        else:
+            betas[arm] += 1
+        chosen_arms.append(arm)
+        rewards.append(reward)
+    return rewards, chosen_arms
+
+# Example usage
+np.random.seed(0)
+rewards_ts, arms_ts = thompson_sampling_bandit(
+    n_arms=len(true_purchase_probabilities),
+    n_rounds=5000,
+    true_probs=true_purchase_probabilities
+)
+print(f"Thompson sampling average reward: {np.mean(rewards_ts):.3f}")</code></pre>
+  <p>Thompson sampling often achieves low regret in practice because it factors uncertainty directly into the action selection process. It also extends naturally to contextual bandits and continuous reward distributions by choosing appropriate likelihoods and priors【787936939409747†L170-L184】.</p>
+
+  <h2>5.4 Contextual Bandits and LinUCB</h2>
+  <p>The multi‑armed bandit problem assumes that the reward distribution of each arm is stationary and independent of contextual information. In many real‑world settings, however, decision makers have access to side information or <em>context</em> that can inform which action is likely to yield higher reward. This gives rise to the <em>contextual bandit</em>, where at each round the agent observes a feature vector \(x\) and must choose an arm \(a\) based on both past rewards and the current context. Examples include personalized news or advertisement selection, where user features such as location or past behaviour influence click‑through rates.</p>
+  <p>One popular algorithm for contextual bandits with linear payoff models is the <strong>LinUCB</strong> algorithm. The algorithm assumes that the expected reward for arm \(a\) in context \(x\) is a linear function \(x^T\theta_a\) of the unknown parameter vector \(\theta_a\). It maintains a least‑squares estimate of \(\theta_a\) and chooses the arm with the highest upper confidence bound on the expected reward. The Wikipedia entry on multi‑armed bandits notes that LinUCB models the representation space using a set of linear predictors and treats the dependency between the expected reward and the context as linear【79752402714881†L528-L533】. This approach allows the algorithm to generalize from previously observed contexts to new ones and to balance exploration (wide confidence intervals) and exploitation (high estimated reward).</p>
+  <p>The following code illustrates a simplified LinUCB implementation for a pricing problem with contextual features. Each price option \(a\) has its own covariance matrix \(A_a\) and parameter estimate \(b_a\). At each round the algorithm observes a context \(x\), computes the estimated parameter \(\hat{\theta}_a = A_a^{-1} b_a\) for each arm, calculates the UCB score \(x^T \hat{\theta}_a + c\sqrt{x^T A_a^{-1} x}\), and selects the arm with the highest score. After receiving the reward the algorithm updates \(A_a\) and \(b_a\).</p>
+  <pre><code class="language-python">def linucb_bandit(n_arms, n_rounds, n_features, contexts, rewards_function, c=1.0):
+    # initialize A_a and b_a for each arm
+    A = [np.identity(n_features) for _ in range(n_arms)]
+    b = [np.zeros(n_features) for _ in range(n_arms)]
+    chosen_arms = []
+    rewards = []
+    for t in range(n_rounds):
+        x = contexts[t]
+        ucb_values = np.zeros(n_arms)
+        for a in range(n_arms):
+            A_inv = np.linalg.inv(A[a])
+            theta_hat = A_inv.dot(b[a])
+            # compute the UCB score
+            ucb_values[a] = theta_hat.dot(x) + c * np.sqrt(x.dot(A_inv).dot(x))
+        arm = np.argmax(ucb_values)
+        reward = rewards_function(arm, x)
+        # update parameters
+        A[arm] += np.outer(x, x)
+        b[arm] += reward * x
+        chosen_arms.append(arm)
+        rewards.append(reward)
+    return rewards, chosen_arms
+
+# Example synthetic contextual environment
+np.random.seed(0)
+n_arms = 3
+n_features = 2
+true_theta = [np.array([0.2, 0.5]), np.array([0.3, -0.2]), np.array([-0.1, 0.4])]
+
+def reward_function(arm, x):
+    # linear payoff plus noise, converted to binary reward
+    mean = x.dot(true_theta[arm])
+    return float(np.random.rand() &lt; 1 / (1 + np.exp(-mean)))
+
+# generate contexts uniformly at random in [0,1]^2
+contexts = np.random.rand(5000, n_features)
+rewards_linucb, arms_linucb = linucb_bandit(
+    n_arms=n_arms,
+    n_rounds=len(contexts),
+    n_features=n_features,
+    contexts=contexts,
+    rewards_function=reward_function,
+    c=1.0
+)
+print(f"LinUCB average reward: {np.mean(rewards_linucb):.3f}")</code></pre>
+  <p>This implementation demonstrates how contextual information can be incorporated into bandit algorithms. When the relationship between context and reward is approximately linear, LinUCB efficiently learns the underlying parameters and outperforms context‑agnostic strategies.</p>
+
+  <h2>5.5 Summary</h2>
+  <p>Multi‑armed bandits provide a powerful abstraction for sequential decision making under uncertainty. In this chapter we examined three widely used algorithms — ε‑greedy, UCB and Thompson sampling — and extended the bandit framework to contextual settings via LinUCB. Each algorithm embodies a different philosophy about how to balance exploration and exploitation: ε‑greedy uses random exploration, UCB uses confidence intervals, and Thompson sampling uses Bayesian posterior sampling. Contextual bandits generalize these ideas by incorporating side information through linear models. Together, these methods form an essential toolkit for pricing, recommendation and other real‑world problems where decisions must adapt to feedback.</p>
+
+  <hr>
+  <p class="citation"><strong>Sources:</strong> Multi‑armed bandit definitions and ε‑greedy strategies【79752402714881†L449-L465】; description of UCB and its optimism‑in‑the‑face‑of‑uncertainty principle【651727890411785†L133-L166】; description of Thompson sampling as sampling from the posterior and acting optimally【787936939409747†L137-L141】【787936939409747†L180-L187】; contextual bandits and the LinUCB linear model assumption【79752402714881†L528-L533】.</p>
+
+</body>
+</html>

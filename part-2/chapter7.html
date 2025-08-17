@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 7 – Partially Observable Markov Decision Processes</title>
+<style>
+  body {
+    background-color: #ffffff;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    margin: 40px;
+    line-height: 1.6;
+    color: #333333;
+  }
+  h1 {
+    color: #2c3e50;
+    font-size: 2.4em;
+    margin-bottom: 0.2em;
+  }
+  h2 {
+    color: #34495e;
+    font-size: 1.8em;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+  }
+  p {
+    font-size: 1.05em;
+    margin-bottom: 1em;
+    text-align: justify;
+  }
+  pre {
+    background-color: #f7f7f7;
+    border: 1px solid #e1e1e8;
+    padding: 16px;
+    overflow-x: auto;
+    border-radius: 6px;
+  }
+  ul {
+    margin-left: 1.2em;
+  }
+</style>
+</head>
+<body>
+<h1>Chapter 7 – Partially Observable Markov Decision Processes</h1>
+<p>In many real decision problems the agent does not have direct access to the complete state of the environment.  Sensors may be noisy, adversaries may conceal their intent, or the relevant variables may be inherently hidden.  To act effectively the agent must reason about uncertainty over hidden states and choose actions that both gather information and accomplish goals.  Partially observable Markov decision processes (POMDPs) extend MDPs to this setting by introducing observations and belief states.  In this chapter we describe the formal definition of a POMDP, explain how beliefs are updated using Bayes’ rule, discuss approximate solution methods such as point‑based planning, explore the use of recurrent neural networks to learn memory‑based policies, and highlight the value of information‑seeking actions.</p>
+
+<h2>7.1 POMDP introduction and components</h2>
+<p>A POMDP models sequential decision making when the agent does not observe the environment state directly.  It is useful in domains such as robotics, healthcare and finance where information is incomplete or noisy.  Formally, a POMDP comprises the same elements as an MDP — states, actions, transitions, rewards and a discount factor — together with an observation set and an observation model.  The agent receives an observation after each action that provides partial information about the underlying state【836476038893693†L80-L119】.</p>
+<p>More precisely, a POMDP is defined by seven components: a finite set of states S, a finite set of actions A, a transition function T(s,a,s′) = P(s′|s,a) specifying state dynamics, a reward function R(s,a) giving the immediate payoff for executing action a in state s, a finite set of observations O, an observation model Z(s′,a,o) = P(o|s′,a) giving the probability of observing o after taking action a and arriving in state s′, and a discount factor γ【836476038893693†L123-L136】.  The agent’s objective is to choose a policy that maximises expected discounted reward just as in an MDP, but it must base its actions on its belief about the hidden state rather than on the state itself.</p>
+<p>The decision cycle in a POMDP proceeds as follows: at each time step the agent maintains a belief distribution over states.  It chooses an action based on its belief; the environment responds by transitioning to a new state and producing an observation; the agent then updates its belief using the observation and the known transition and observation models.  This cycle continues indefinitely【836476038893693†L140-L149】.  Because the agent never knows the exact state, its policy must map belief distributions (or observation histories) to actions.  In practice POMDPs can be used to model pricing problems where the demand state is unobserved; the seller only sees noisy sales and must infer the level of demand before choosing the next price.</p>
+<p>POMDPs generalise MDPs: if the observation model reveals the state perfectly then the POMDP reduces to an MDP.  In realistic settings the observation model introduces uncertainty that the agent must manage.  Applications range from autonomous navigation in fog to personalisation systems that infer user preferences from noisy interactions.  Understanding the formal structure of POMDPs lays the groundwork for algorithms that address uncertainty systematically.</p>
+
+<h2>7.2 Belief states and Bayes filters</h2>
+<p>Because the true state is hidden the agent summarises its knowledge with a <em>belief state</em>, a probability distribution over all possible states.  Let Bel(s) denote the current belief about being in state s.  When the agent takes action a, receives observation o and transitions to some s′, it updates its belief using Bayes’ rule.  The belief update equation is
+\[Bel(s′) = rac{ P(o|s′,a) ∑<sub>s∈S</sub> P(s′|s,a) Bel(s) }{ P(o|a,Bel) },\]
+where the denominator P(o|a,Bel) is a normalising constant ensuring that the updated beliefs sum to one【836476038893693†L149-L152】.  This update combines the likelihood of the observation given the hypothesised new state with the prior belief and the transition model.</p>
+<p>Maintaining a belief state allows the POMDP to be transformed into a fully observable process in the continuous belief space.  The belief space is high‑dimensional — each belief is a point in a simplex — but dynamic programming and planning algorithms can operate in this space in principle.  In the belief MDP the new state is the updated belief distribution, the action set is the same as in the original POMDP, and the reward is the expected reward under the belief.  Although conceptually straightforward, exact computation over belief spaces quickly becomes intractable due to their continuous nature.</p>
+<p>The following Python snippet implements a belief update for a simple two‑state POMDP representing high and low demand.  The agent cannot observe demand directly but receives a noisy sales signal.  Beliefs are updated using the transition model, observation likelihood and prior belief.</p>
+<pre><code class="language-python">import numpy as np
+
+# States: 0 = low demand, 1 = high demand
+states = [0, 1]
+# Transition probabilities: demand tends to persist
+T = np.array([[0.8, 0.2],
+              [0.3, 0.7]])
+# Observation model: probability of observing sale (1) given state and price action
+# For simplicity assume action does not affect observation likelihood here
+Z = {0: [0.2, 0.8],  # P(o=0|state)
+     1: [0.7, 0.3]}  # P(o=1|state)
+
+def update_belief(bel, action, observation):
+    # prediction step
+    bel_pred = T.T @ bel
+    # update step with Bayes rule
+    lik = np.array([Z[state][observation] for state in states])
+    bel_post = lik * bel_pred
+    bel_post = bel_post / bel_post.sum()
+    return bel_post
+
+# initial belief: 50/50
+belief = np.array([0.5, 0.5])
+# agent observes observation 1 (sale)
+new_belief = update_belief(belief, action=None, observation=1)
+print("Updated belief:", new_belief)
+</code></pre>
+<p>This code first performs a prediction step by applying the transition matrix to the prior belief.  It then multiplies by the observation likelihood and normalises.  Belief updates such as this underlie all POMDP planning algorithms, whether exact or approximate.</p>
+
+<h2>7.3 Point‑based planning</h2>
+<p>Solving a POMDP exactly is often infeasible because the belief space is continuous and high‑dimensional.  Value iteration over beliefs requires computing a piecewise linear and convex value function defined over the entire simplex.  To address this challenge researchers have developed <em>point‑based methods</em> that focus computation on a finite set of representative belief points.  These methods approximate the value function by iterating only on the selected points, greatly reducing the computational burden【836476038893693†L168-L188】.</p>
+<p>Point‑based value iteration (PBVI) starts by sampling a set of beliefs reachable from the initial belief under some exploratory policy.  At each iteration it updates the value function at these belief points by backing up the expected return of taking each action and transitioning to successor beliefs.  Algorithms such as Perseus improve efficiency further by randomly sampling a subset of belief points at each iteration.  Because the value function is convex, improvements at sampled points often generalise to nearby beliefs, allowing PBVI to converge quickly on good approximations.</p>
+<p>Policy search methods provide an alternative to value‑function approximation.  Techniques like QMDP and finite‑state controllers search directly for policies with good performance by representing policies as parameterised decision trees or finite automata【836476038893693†L176-L186】.  Monte Carlo planning methods such as POMCP and DESPOT simulate trajectories from belief states using a generative model and update action values based on sampled returns.  These approaches are particularly effective in large POMDPs because they focus computation on belief regions that are actually encountered.</p>
+<p>The following pseudo‑code illustrates the high‑level structure of a PBVI algorithm.  It samples belief points, iterates backups and computes an approximate policy.  In practice one must also implement belief simulation and maintain α‑vectors representing the piecewise linear value function.</p>
+<pre><code class="language-python"># Pseudo-code outline for point-based value iteration
+initialize belief_set with initial belief
+initialize value_function over belief_set
+for iteration in range(num_iterations):
+    for belief in belief_set:
+        # backup: compute value of belief by considering all actions
+        best_value = -np.inf
+        best_action = None
+        for action in actions:
+            expected_return = reward(belief, action)
+            # compute expected value of next belief states
+            value_next = 0
+            for observation in observations:
+                next_belief = update_belief(belief, action, observation)
+                # project next_belief onto nearest point in belief_set
+                nearest = find_nearest(next_belief, belief_set)
+                value_next += observation_prob(belief, action, observation) * value_function[nearest]
+            candidate = expected_return + gamma * value_next
+            if candidate > best_value:
+                best_value, best_action = candidate, action
+        new_value_function[belief] = best_value
+        policy[belief] = best_action
+    value_function = new_value_function
+</code></pre>
+<p>Despite its complexity, PBVI is widely used in problems such as robotic navigation with uncertain sensors and partially observable inventory control.  It demonstrates how exploiting structure and sampling can yield practical solutions in the face of continuous belief spaces.</p>
+
+<h2>7.4 Recurrent policies for POMDPs</h2>
+<p>An alternative way to handle partial observability is to abandon explicit belief updates and instead learn a policy with memory.  Recurrent neural networks (RNNs) such as long short‑term memory (LSTM) and gated recurrent units (GRU) can ingest sequences of observations and actions and maintain an internal state that implicitly summarises past information.  By feeding past observations into an RNN, the network learns to infer hidden state information and choose actions accordingly【460422206508107†L83-L87】.</p>
+<p>RNN‑based policies are trained end‑to‑end using reinforcement learning algorithms.  At each time step the network receives the current observation and the previous action; its hidden state acts as the memory of the sequence.  The output is a probability distribution over actions.  This approach sidesteps the need for hand‑crafted belief updates and can scale to high‑dimensional observations such as images.  However, training recurrent policies is challenging: credit assignment must propagate through time, exploration becomes riskier because actions affect both state and future observations, and the recurrent weights can be difficult to stabilise during learning【460422206508107†L130-L135】.</p>
+<p>The code below sketches a simple recurrent policy network using PyTorch.  It takes as input an observation and the previous hidden state, updates the hidden state with a gated recurrent unit, and outputs logits for each action.  Such a network could be used in a partially observable pricing problem where the observation is the number of units sold at the last price and the hidden state captures inferred demand.</p>
+<pre><code class="language-python">import torch
+import torch.nn as nn
+
+class RecurrentPolicy(nn.Module):
+    def __init__(self, obs_size, hidden_size, num_actions):
+        super().__init__()
+        self.rnn = nn.GRUCell(obs_size, hidden_size)
+        self.fc = nn.Linear(hidden_size, num_actions)
+
+    def forward(self, obs, hidden):
+        hidden = self.rnn(obs, hidden)
+        logits = self.fc(hidden)
+        return logits, hidden
+
+# Example usage
+obs_size = 1  # e.g. last sales volume
+hidden_size = 16
+num_actions = 2  # two price choices
+policy_net = RecurrentPolicy(obs_size, hidden_size, num_actions)
+
+# initial hidden state
+hidden = torch.zeros(1, hidden_size)
+# observation (e.g. units sold at previous step)
+observation = torch.tensor([[3.0]])
+logits, hidden = policy_net(observation, hidden)
+action_probs = torch.softmax(logits, dim=-1)
+print("Action probabilities:", action_probs.detach().numpy())
+</code></pre>
+<p>This recurrent policy does not explicitly maintain a belief distribution; instead, its hidden state captures information about the hidden demand that is useful for pricing decisions.  When combined with policy gradient or actor–critic algorithms, recurrent policies provide a powerful tool for POMDPs.</p>
+
+<h2>7.5 Information gathering and exploration</h2>
+<p>In a POMDP the agent may need to take actions that have little immediate reward but are valuable because they reduce uncertainty.  Such <em>information‑gathering actions</em> improve the belief state and enable better future decisions.  In a pricing context the seller may temporarily lower the price to observe how sensitive demand is to discounts, sacrificing profit today to gain information that increases long‑term revenue.  Balancing exploitation and information gathering is at the heart of decision making under partial observability.</p>
+<p>One way to formalise information value is through the concept of <em>expected information gain</em>, which measures how much a prospective observation will reduce the entropy of the belief state.  Actions can then be chosen to maximise a weighted sum of expected reward and expected information gain.  Alternatively, one can cast the problem as a multi‑armed bandit with context and treat uncertainty about the context as part of the belief state.  Thompson sampling and other Bayesian methods naturally balance exploration and exploitation by sampling from the posterior over states or model parameters.</p>
+<p>The following simple simulation illustrates information gathering in a pricing POMDP with two hidden demand states.  The agent maintains a belief over high and low demand, chooses between a high price (exploit) and a low price (explore) and updates its belief after observing sales.  The low price yields lower immediate profit but provides more informative observations, allowing better future pricing.</p>
+<pre><code class="language-python"># Simplified information gathering simulation
+np.random.seed(0)
+belief = np.array([0.5, 0.5])
+profit = 0
+for t in range(10):
+    # compute expected profits of high and low price
+    high_profit = 8 * (0.2 * belief[0] + 0.7 * belief[1])
+    low_profit  = 5 * (0.5 * belief[0] + 0.8 * belief[1])
+    # compute expected information gain (entropy reduction)
+    def entropy(b): return -np.sum(b * np.log(b + 1e-9))
+    # hypothetical belief updates after observing sale at each price
+    belief_high = update_belief(belief, None, observation=1)  # sale indicates high demand
+    belief_low  = update_belief(belief, None, observation=0)  # no sale indicates low demand
+    info_gain_high = entropy(belief) - 0.5*(entropy(belief_high) + entropy(update_belief(belief, None, 0)))
+    info_gain_low  = entropy(belief) - 0.5*(entropy(belief_low)  + entropy(update_belief(belief, None, 1)))
+    # choose action maximising weighted sum of profit and information gain
+    if high_profit + 2*info_gain_high > low_profit + 2*info_gain_low:
+        action = 'high'
+        # generate observation from true but hidden state (simulate high demand here)
+        observation = np.random.rand() > 0.3  # high price yields sale with prob 0.7 in high demand
+        reward = 8 if observation else 0
+    else:
+        action = 'low'
+        observation = np.random.rand() > 0.5  # low price yields sale with prob 0.8 in high demand
+        reward = 5 if observation else 0
+    belief = update_belief(belief, None, int(observation))
+    profit += reward
+print("Total profit with exploration:", profit)
+</code></pre>
+<p>This example balances immediate profit with information gain by explicitly weighting the reduction in belief entropy.  In practice more principled approaches such as Bayesian RL or information‑theoretic RL automate this trade‑off.  The key takeaway is that, under partial observability, actions that improve one’s knowledge of the hidden state can be as important as actions that maximise immediate reward.</p>
+
+<h2>Sources</h2>
+<ul>
+<li>Definition of POMDP components including states, actions, observations, observation model, rewards and discount factor【836476038893693†L123-L136】.</li>
+<li>Belief update using Bayes’ rule in a POMDP【836476038893693†L149-L152】.</li>
+<li>Descriptions of belief state representation and point‑based planning methods【836476038893693†L168-L188】.</li>
+<li>Use of recurrent neural networks to handle POMDPs and challenges of training【460422206508107†L83-L87】【460422206508107†L130-L135】.</li>
+</ul>
+</body>
+</html>
