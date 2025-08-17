@@ -239,7 +239,22 @@ The following two lessons should prepare you for almost all of the math that you
 * Fisher Information & Natural Gradient
 * Trust‑Region Connections
 
-  
+
+# Part X — Projects & Roadmaps
+
+## Chapter 35. Hands‑On Projects & Templates [visit lesson](part-10/chapter35.html) 
+* Pricing Simulator
+* Inventory Sandbox
+* Ad Auction Lab
+* Gridworlds & Mazes
+
+## Chapter 36. Reading Lists & Research Roadmaps  [visit lesson](part-10/chapter36.html) 
+* Classic Texts & Courses
+* Key Papers by Topic
+* Open Problems & Trends
+
+
+Community & Conferences
 # Part 4  
 
 * Q-Learning, SARSA, Double Q-Learning Lab [lab and tutorial](q-learning-lab.html)
