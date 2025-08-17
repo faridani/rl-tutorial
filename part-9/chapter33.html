@@ -1,0 +1,264 @@
+<!--
+  Chapter 33: Regret, PAC & Sample Complexity
+
+  This chapter belongs to Part IX and delves into regret analysis and sample
+  complexity in reinforcement learning.  It defines regret for bandit
+  problems, introduces probably approximately correct (PAC) analyses for
+  MDPs, discusses regret under function approximation and outlines
+  fundamental lower bounds.  Code examples illustrate regret computation
+  and optimistic exploration.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 33 – Regret, PAC &amp; Sample Complexity</title>
+  <style>
+    body {
+      background: #ffffff;
+      color: #222;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      margin: 40px;
+      line-height: 1.6;
+    }
+    h1, h2 {
+      color: #2c3e50;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-family: "Courier New", monospace;
+    }
+    footer {
+      margin-top: 40px;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <h1>33 Regret, PAC &amp; Sample Complexity</h1>
+  <p>
+    Regret quantifies how much reward an agent has lost compared to an optimal
+    strategy.  PAC (probably approximately correct) analyses provide
+    guarantees on the number of samples needed to achieve near‑optimal
+    performance with high probability.  Understanding these notions is
+    essential for evaluating and designing efficient RL algorithms.  This
+    chapter introduces regret bounds for bandits, PAC‑MDP frameworks,
+    implications of function approximation and fundamental lower bounds.
+  </p>
+
+  <h2>33.1 Bandit Regret Bounds</h2>
+  <p>
+    In a multi‑armed bandit problem with \(K\) arms, the agent repeatedly
+    selects an arm and receives a random reward.  The regret after
+    \(T\) rounds is the difference between the total reward collected by an
+    optimal strategy and that collected by the agent.  Formally, if
+    \(\mu_k\) denotes the mean reward of arm \(k\) and \(\mu^*=\max_k\mu_k\),
+    the regret is \(\rho = T\mu^* - \sum_{t=1}^T \hat r_t\)【79752402714881†L258-L268】.
+    A zero‑regret strategy is one where the average regret per round tends to
+    zero as \(T \to \infty\)【79752402714881†L268-L272】.  Algorithms such as
+    UCB (Upper Confidence Bound) and Thompson sampling achieve sub‑linear
+    regret: \(O(\log T)\) for stochastic bandits and \(O(\sqrt{T})\) for
+    adversarial bandits.  These rates signify that the agent’s performance
+    approaches that of an oracle as it gathers more data.
+  </p>
+  <p>
+    The following Python code simulates an epsilon‑greedy algorithm on a
+    Bernoulli bandit and computes the cumulative regret.  The agent explores
+    with probability \(\varepsilon\) and exploits the best arm otherwise.  By
+    plotting regret over time, one can verify that regret grows logarithmically
+    for decaying \(\varepsilon\).  This example provides intuition for
+    theoretical bounds.
+  </p>
+  <pre><code class="language-python">import numpy as np
+import matplotlib.pyplot as plt
+
+# Two-armed Bernoulli bandit
+true_means = [0.6, 0.8]
+T = 500
+epsilon = 0.1
+
+# estimated means
+est = [0.0, 0.0]
+counts = [0, 0]
+regret = []
+
+for t in range(1, T+1):
+    # epsilon-greedy action selection
+    if np.random.rand() < epsilon:
+        a = np.random.choice(2)
+    else:
+        a = np.argmax(est)
+    reward = np.random.binomial(1, true_means[a])
+    # update estimates
+    counts[a] += 1
+    est[a] += (reward - est[a]) / counts[a]
+    # compute regret
+    optimal = max(true_means)
+    regret.append(optimal - reward)
+
+cumulative_regret = np.cumsum(regret)
+plt.plot(cumulative_regret)
+plt.xlabel('Time step')
+plt.ylabel('Cumulative regret')
+plt.title('Epsilon-greedy bandit regret')
+plt.show()
+  </code></pre>
+
+  <h2>33.2 PAC‑MDP &amp; Optimism</h2>
+  <p>
+    In reinforcement learning, the PAC‑MDP framework provides sample
+    complexity guarantees.  An algorithm is said to be PAC‑MDP if, for any
+    \(\varepsilon\) and \(\delta\), it outputs a policy whose expected return is
+    within \(\varepsilon\) of optimal with probability at least \(1-\delta\),
+    after a number of steps polynomial in the relevant parameters (state and
+    action counts, horizon and \(1/\varepsilon\)).  The key idea behind
+    many PAC algorithms is <em>optimism in the face of uncertainty</em> (OFU):
+    when the agent is uncertain about the value of an action, it assumes the
+    best and explores that action to gather information.
+  </p>
+  <p>
+    Algorithms such as R‑MAX and UCRL apply OFU by initializing unknown
+    state–action pairs with optimistic rewards and updating them as data
+    arrive.  At each step, the agent solves a planning problem in the
+    optimistic model to select actions.  The algorithm is guaranteed to
+    behave near‑optimally after exploring each state–action pair a
+    sufficient number of times.  Although worst‑case sample complexity
+    bounds can be high, OFU methods provide strong theoretical assurances.
+  </p>
+  <p>
+    The pseudo‑code below implements a basic optimistic tabular MDP
+    algorithm.  Unknown transitions and rewards are initialised to their
+    maximal possible values.  Planning (here simplified as value iteration)
+    yields a policy that is greedy with respect to these optimistic
+    estimates.  As the agent collects data, the estimates become less
+    optimistic and the policy converges to near‑optimal.
+  </p>
+  <pre><code class="language-python"># Optimistic MDP algorithm (simplified)
+def optimistic_value_iteration(num_states, num_actions, gamma=0.9, h=5):
+    # optimistic rewards and transitions
+    R_hat = np.ones((num_states, num_actions))  # assume reward 1 for unknown
+    P_hat = np.zeros((num_states, num_actions, num_states))
+    for s in range(num_states):
+        for a in range(num_actions):
+            P_hat[s, a, :] = np.full(num_states, 1/num_states)
+    V = np.zeros(num_states)
+    for _ in range(h):
+        V_new = np.zeros_like(V)
+        for s in range(num_states):
+            V_new[s] = max(R_hat[s, a] + gamma * P_hat[s, a].dot(V) for a in range(num_actions))
+        V = V_new
+    # derive policy
+    policy = np.zeros(num_states, dtype=int)
+    for s in range(num_states):
+        policy[s] = np.argmax([R_hat[s, a] + gamma * P_hat[s, a].dot(V) for a in range(num_actions)])
+    return policy
+  </code></pre>
+
+  <h2>33.3 Function Approximation Regret</h2>
+  <p>
+    When value functions are approximated, regret and sample complexity
+    analyses become more challenging.  Approximation error causes the
+    learned policy to deviate from the true optimal policy even with
+    infinite data.  In bandits, linear and non‑linear function approximations
+    replace tables of arm statistics with parameterised models; regret bounds
+    depend on the dimension of the feature space and the regularity of the
+    reward function.  For example, linear contextual bandits attain
+    \(O(d\sqrt{T})\) regret where \(d\) is the dimension, while general
+    function approximators require additional assumptions.
+  </p>
+  <p>
+    In MDPs with function approximation, algorithms such as Least‑Squares
+    Policy Iteration (LSPI) and Fitted Q‑Iteration approximate the Q‑function
+    by a linear combination of features.  Convergence guarantees are
+    difficult: the projected Bellman operator may lack contraction and
+    regret can be unbounded.  Recent advances provide bounds under
+    assumptions like linear MDPs or low Bellman rank, but closing the
+    theoretical gap remains an active research area.
+  </p>
+  <p>
+    The next code example trains a linear contextual bandit using ridge
+    regression.  It maintains estimates of the reward parameters for each
+    arm and updates them via least‑squares.  The algorithm selects the arm
+    with the highest upper confidence bound.  The cumulative regret is
+    computed to observe the \(O(d\sqrt{T})\) behaviour in practice.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+# linear contextual bandit with two arms and 2D context
+T = 300
+d = 2
+true_theta = [np.array([0.2, 0.5]), np.array([0.5, 0.3])]
+
+# initialise estimates
+A = [np.eye(d) for _ in range(2)]
+b = [np.zeros(d) for _ in range(2)]
+regret = []
+
+for t in range(1, T+1):
+    x_t = np.random.rand(d)
+    # compute UCB for each arm
+    ucb = []
+    for a in range(2):
+        theta_hat = np.linalg.solve(A[a], b[a])
+        est_reward = theta_hat.dot(x_t)
+        bonus = np.sqrt(x_t.dot(np.linalg.solve(A[a], x_t)) * np.log(t + 1))
+        ucb.append(est_reward + bonus)
+    arm = np.argmax(ucb)
+    # sample reward
+    reward = true_theta[arm].dot(x_t) + np.random.normal(scale=0.05)
+    # update design matrix
+    A[arm] += np.outer(x_t, x_t)
+    b[arm] += reward * x_t
+    # compute regret
+    optimal = max(theta.dot(x_t) for theta in true_theta)
+    regret.append(optimal - true_theta[arm].dot(x_t))
+
+print("Cumulative regret:", np.cumsum(regret)[-1])
+  </code></pre>
+
+  <h2>33.4 Lower Bounds &amp; Minimax</h2>
+  <p>
+    Lower bounds establish fundamental limits on the performance of any
+    algorithm.  For stochastic multi‑armed bandits, it can be shown that
+    any strategy suffers at least \(\Omega(\log T)\) regret in expectation;
+    for adversarial bandits the minimax regret is \(\Theta(\sqrt{T})\).
+    These bounds reveal that one cannot hope to improve the regret order
+    without additional structure.  In reinforcement learning, lower bounds
+    similarly show that learning an \(\varepsilon\)-optimal policy in a
+    general MDP requires polynomially many samples in \(|\mathcal{S}||\mathcal{A}|/\varepsilon\).
+  </p>
+  <p>
+    Minimax analyses consider the worst‑case environment within a class and
+    measure the performance of the best possible algorithm against it.
+    Regret lower bounds for contextual bandits and reinforcement learning
+    highlight that there is an inherent trade‑off between exploration and
+    exploitation that no algorithm can escape.  Understanding these bounds
+    guides algorithm designers to focus on achievable objectives rather than
+    chasing impossible performance.
+  </p>
+  <p>
+    In practice, lower bounds motivate the search for additional
+    assumptions—such as linearity, low rank or special structure—to obtain
+    improved rates.  They also encourage researchers to design algorithms
+    that adapt to the favourable properties of the environment (e.g., gap‑
+    dependent bounds) while retaining robustness in worst‑case scenarios.
+    Such insights continue to drive progress in the field of theoretical
+    reinforcement learning.
+  </p>
+
+  <footer>
+    <strong>Sources</strong><br>
+    Regret in a bandit is defined as the difference between optimal reward and
+    collected reward【79752402714881†L258-L268】.  A zero‑regret strategy has
+    average regret per round tending to zero【79752402714881†L268-L272】.
+  </footer>
+</body>
+</html>

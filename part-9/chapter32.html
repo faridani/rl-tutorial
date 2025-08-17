@@ -1,0 +1,276 @@
+<!--
+  Chapter 32: Convergence & Stability
+
+  This chapter is part of Part IX of the reinforcement learning book and
+  studies theoretical aspects of convergence, stability and instability in
+  reinforcement learning.  It explains the contraction properties of the
+  Bellman operator, the issues caused by the deadly triad of function
+  approximation, bootstrapping and off‑policy learning, and demonstrates
+  divergence examples and remedies.  Each subsection contains multiple
+  paragraphs of exposition and illustrative code.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 32 – Convergence &amp; Stability</title>
+  <style>
+    body {
+      background: #ffffff;
+      color: #222;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      margin: 40px;
+      line-height: 1.6;
+    }
+    h1, h2, h3 {
+      color: #2c3e50;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-family: "Courier New", monospace;
+    }
+    footer {
+      margin-top: 40px;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <h1>32 Convergence &amp; Stability</h1>
+  <p>
+    Theoretical analysis of reinforcement learning algorithms helps us
+    understand when they converge, why they diverge and how to stabilise
+    training.  Convergence properties are typically derived from the
+    contraction mapping theory and fixed‑point analysis of the Bellman
+    operator.  However, when function approximation, bootstrapping and
+    off‑policy learning are combined, standard guarantees may break down,
+    leading to the so‑called “deadly triad.”  This chapter explores these
+    issues and outlines remedies.
+  </p>
+
+  <h2>32.1 Projected Bellman Operator</h2>
+  <p>
+    In the tabular setting, the Bellman operator for a policy \(\pi\) is
+    defined as \(T_\pi(v)=r_\pi + \gamma P_\pi v\), where \(r_\pi\) is the
+    expected immediate reward and \(P_\pi\) is the transition matrix under
+    policy \(\pi\).  The operator maps one value function to another.  A key
+    property is that the Bellman operator is a \(\gamma\)-contraction
+    in the max norm: \(\|T_\pi(v_1)-T_\pi(v_2)\|_\infty \leq \gamma\|v_1-v_2\|_\infty\)【545338798762897†L93-L113】.
+    Because \(\gamma \in (0,1)\), repeated application of the Bellman operator
+    converges to a unique fixed point—the true value function—which justifies
+    iterative policy evaluation.  A similar contraction holds for the optimal
+    Bellman operator \(T^*\), implying that value iteration converges to the
+    optimal value function【545338798762897†L147-L180】.
+  </p>
+  <p>
+    When using function approximation, we cannot represent an arbitrary
+    value function exactly.  Instead, we restrict ourselves to a function
+    class (e.g., linear combinations of basis functions) and project the
+    Bellman update back into this class.  The projected Bellman operator
+    \(\Pi T\) first applies the true Bellman operator \(T\) and then
+    projects onto the approximation subspace via a projection \(\Pi\).
+    Although \(T\) is a contraction, the composition \(\Pi T\) is not
+    necessarily one—projection can destroy the contraction property.  As
+    a result, algorithms like approximate value iteration or Q‑learning may
+    diverge when using a function approximator and bootstrapping.  This
+    phenomenon motivates careful algorithm design and theoretical study of
+    stability conditions.
+  </p>
+  <p>
+    The following code demonstrates projected value iteration with linear
+    function approximation.  We consider a simple chain MDP with five
+    states and actions {left, right}.  The value function is approximated
+    by a linear combination of hand‑crafted basis features.  After each
+    Bellman update, we project the resulting vector onto the span of the
+    features by solving a least‑squares problem.  Despite the simplicity of
+    this example, the need for projection illustrates the general idea
+    underlying the projected Bellman operator.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+# chain MDP with deterministic transitions
+num_states, num_actions = 5, 2
+P = np.zeros((num_states, num_actions, num_states))
+R = np.zeros((num_states, num_actions))
+for s in range(num_states):
+    # action 0: left, action 1: right
+    P[s, 0, max(0, s-1)] = 1.0
+    P[s, 1, min(num_states-1, s+1)] = 1.0
+    R[s, 0] = -0.1
+    R[s, 1] = -0.1
+# target rewards at the ends
+R[0, :] = 0.0
+R[4, :] = 1.0
+
+# feature matrix: basis functions for approximation
+features = np.eye(num_states)[:, :2]  # project state to two features
+weights = np.zeros(2)
+
+gamma = 0.9
+
+for i in range(50):
+    # Bellman update on value estimates
+    v = features @ weights
+    T_v = np.zeros(num_states)
+    for s in range(num_states):
+        # greedy action for approximate value iteration
+        action_values = []
+        for a in range(num_actions):
+            next_v = sum(P[s, a, s2] * v[s2] for s2 in range(num_states))
+            action_values.append(R[s, a] + gamma * next_v)
+        T_v[s] = max(action_values)
+    # projection step: solve least squares to project T_v onto feature span
+    # weights = argmin_w ||features*w - T_v||^2
+    weights = np.linalg.lstsq(features, T_v, rcond=None)[0]
+  </code></pre>
+
+  <h2>32.2 Deadly Triad</h2>
+  <p>
+    Researchers have identified a set of three conditions that often lead to
+    instability and divergence in reinforcement learning: function
+    approximation, bootstrapping and off‑policy learning.  Collectively
+    referred to as the <em>deadly triad</em>, these conditions arise in deep
+    Q‑learning and other value‑based methods.  A blog post summarises
+    that the deadly triad involves (1) using a function approximator to
+    represent the value function, (2) bootstrapping by updating estimates
+    based on other learned estimates, and (3) learning off‑policy from data
+    generated by a different behaviour policy【528464796624205†L21-L31】.  When all
+    three are present, the projected Bellman operator is no longer a
+    contraction, and the algorithm can diverge.
+  </p>
+  <p>
+    Function approximation allows RL algorithms to handle large or
+    continuous state spaces by approximating the Q‑function with
+    parametric models such as neural networks.  Bootstrapping methods
+    (e.g., temporal‑difference learning) update estimates using the agent’s
+    current value estimates instead of waiting for full returns.  Off‑policy
+    learning involves using data collected under one policy to learn about
+    another, enabling experience replay and sample efficiency.  Individually
+    these techniques are beneficial, but combined they break the
+    contraction arguments.  Experiments have shown that deep Q‑networks can
+    sometimes converge despite the deadly triad, but success often relies on
+    architectural tricks such as target networks and double Q‑learning.
+  </p>
+  <p>
+    To illustrate divergence, consider a simple two‑state MDP with linear
+    function approximation.  If we update Q‑values using off‑policy
+    Q‑learning with a large learning rate, the weights can oscillate or grow
+    without bound.  In practice, one mitigates the deadly triad by using
+    smaller step sizes, target networks, double estimators and
+    distributional methods.  The code below constructs a minimal example
+    where off‑policy Q‑learning diverges because the update uses a fixed
+    behaviour policy and a shared weight for two states.
+  </p>
+  <pre><code class="language-python"># Divergence example: two-state off-policy Q-learning with linear function approximation
+import numpy as np
+
+# two states and one feature per state
+a = 0.9  # discount factor
+
+# feature matrix (2 states, 1 feature)
+phi = np.array([[1.0], [0.5]])
+# fixed behaviour policy: always choose action a=0
+
+# Q-function parameters (shared weight)
+w = 1.0
+
+# Off-policy target and behaviour transitions
+P = np.array([[0.0, 1.0], [1.0, 0.0]])
+R = np.array([0.0, 1.0])
+
+alpha = 0.5  # high step size
+
+for step in range(10):
+    # pick state 0 then state 1 alternately
+    s = step % 2
+    r = R[s]
+    next_s = 1 - s
+    # TD target using bootstrapped Q-value of next state
+    target = r + a * w * phi[next_s][0]
+    # update weight
+    error = target - w * phi[s][0]
+    w += alpha * error * phi[s][0]
+    print(f"step {step}, weight {w:.3f}")
+  </code></pre>
+
+  <h2>32.3 Divergence Examples</h2>
+  <p>
+    Divergence in RL algorithms can occur even in simple settings.  In the
+    previous section, we saw how combining off‑policy updates with
+    function approximation can cause the weight to oscillate.  Another
+    classic divergence example is Baird’s counter‑example, where a linear
+    Q‑learning algorithm diverges on a seven‑state MDP due to an asymmetric
+    feature representation.  Baird’s example highlights that even with
+    small step sizes, off‑policy TD methods may not converge.
+  </p>
+  <p>
+    Divergence can also arise in actor–critic methods.  If the critic’s
+    value function is poorly approximated, the actor may update the policy
+    in a direction that increases the true loss.  Without mechanisms such
+    as trust‑region constraints, the actor may overshoot and produce
+    unstable behaviour.  Understanding and diagnosing divergence requires
+    monitoring loss curves, value estimates and the magnitude of weight
+    updates during training.
+  </p>
+  <p>
+    To experiment with divergence, one can implement Baird’s seven‑star MDP
+    and observe the behaviour of TD(0) with linear features.  Another
+    instructive example is to set up a simple actor–critic on a toy
+    continuous control task and observe how increasing the learning rate
+    causes the critic to diverge, leading to chaotic policy updates.  These
+    examples underscore the importance of theoretical analysis and
+    practical heuristics.
+  </p>
+
+  <h2>32.4 Remedies &amp; Constraints</h2>
+  <p>
+    Several algorithmic innovations have been proposed to mitigate the
+    deadly triad and stabilise RL training.  Target networks decouple the
+    bootstrapped target from the current network parameters, reducing the
+    moving‑target problem.  Double Q‑learning uses two value networks and
+    employs one network for action selection and the other for target
+    evaluation, alleviating over‑estimation bias.  Dueling architectures
+    separately estimate state values and advantages, improving learning
+    efficiency.  Prioritised experience replay samples informative
+    transitions more frequently while correcting the induced bias.
+  </p>
+  <p>
+    Other remedies include small learning rates, gradient clipping and
+    normalisation, and careful selection of function classes.  Conservative
+    algorithms such as Conservative Q‑learning (CQL) incorporate regularisers
+    that penalise Q‑values on unseen actions, effectively keeping the
+    learned policy close to the behaviour policy.  Policy gradient methods
+    avoid bootstrapping on values altogether but still require variance
+    reduction and trust regions to ensure stability.  In all cases,
+    theoretical insight guides the design of robust algorithms.
+  </p>
+  <p>
+    Finally, constraint‑based approaches modify the optimisation objective
+    to enforce safety or risk‑sensitive criteria.  Constrained MDPs add
+    secondary cost functions and use Lagrange multipliers to ensure that
+    the agent satisfies budget or safety constraints.  Trust‑region policy
+    optimisation (TRPO) imposes a KL‑divergence constraint between the old
+    and new policy updates, ensuring monotonic improvement and mitigating
+    divergence【476298955389460†L739-L792】.  Proximal policy optimisation (PPO)
+    approximates this trust region with a clipped surrogate objective.
+  </p>
+
+  <footer>
+    <strong>Sources</strong><br>
+    The Bellman operator is a γ‑contraction in the max norm, ensuring
+    convergence to a unique fixed point【545338798762897†L93-L113】.  The
+    deadly triad refers to the combination of function approximation,
+    bootstrapping and off‑policy learning【528464796624205†L21-L31】.  Trust‑region
+    policy optimisation uses a KL‑divergence constraint to guarantee
+    monotonic policy improvement【476298955389460†L739-L792】.
+  </footer>
+</body>
+</html>

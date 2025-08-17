@@ -1,0 +1,257 @@
+<!--
+  Chapter 34: Stochastic Approximation & Natural Gradient
+
+  This chapter completes Part IX by exploring stochastic approximation
+  algorithms and connections to natural gradient methods.  We discuss the
+  Robbins–Monro algorithm and its convergence properties, the benefits of
+  Polyak–Ruppert averaging, derive the natural gradient from the Fisher
+  information metric, and link these ideas to trust‑region optimisation.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chapter 34 – Stochastic Approximation &amp; Natural Gradient</title>
+  <style>
+    body {
+      background: #ffffff;
+      color: #222;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      margin: 40px;
+      line-height: 1.6;
+    }
+    h1, h2 {
+      color: #2c3e50;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-family: "Courier New", monospace;
+    }
+    footer {
+      margin-top: 40px;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <h1>34 Stochastic Approximation &amp; Natural Gradient</h1>
+  <p>
+    Many reinforcement learning algorithms rely on stochastic approximation
+    techniques to compute expectations or solve fixed‑point equations when
+    exact evaluation is intractable.  The Robbins–Monro algorithm is the
+    prototypical method for finding roots of an unknown function based on
+    noisy observations.  Averaging techniques such as Polyak–Ruppert
+    averaging improve the stability and convergence rates of stochastic
+    gradient methods.  Natural gradient methods, derived from the
+    information geometry of the parameter space, pre‑condition the
+    gradient using the Fisher information matrix and relate closely to
+    trust‑region approaches.  This chapter develops these ideas and
+    provides illustrative examples.
+  </p>
+
+  <h2>34.1 Robbins–Monro Stochastic Approximation</h2>
+  <p>
+    Suppose we wish to find the root \(\theta^\*\) of a function \(M(\theta)
+    = \alpha\), but we cannot compute \(M\) exactly and instead observe
+    noisy estimates \(N(\theta)\) whose expectation is \(M(\theta)\).  The
+    Robbins–Monro algorithm constructs a sequence of estimates
+    \(\{\theta_n\}\) via
+    \[\theta_{n+1} = \theta_n - a_n (N(\theta_n) - \alpha),\]
+    where \(\{a_n\}\) is a sequence of positive step sizes satisfying
+    \(\sum_n a_n = \infty\) and \(\sum_n a_n^2 < \infty\)【776680723656089†L160-L179】.
+    Under mild conditions, this recursion converges almost surely to the
+    true root \(\theta^\*\).  Stochastic approximation underlies many RL
+    algorithms, such as temporal‑difference learning, where the TD error
+    provides a noisy estimate of the value function’s residual.
+  </p>
+  <p>
+    The step size requirements balance exploration and stability: a large
+    \(a_n\) encourages rapid initial movement toward the root, while a
+    slowly decreasing sequence ensures the noise decays sufficiently fast
+    for convergence.  In practice, one often uses schedules like
+    \(a_n=1/(n+1)\) or constant step sizes combined with averaging.
+    Stochastic approximation theory has been extended to handle
+    vector‑valued functions, non‑linear dynamics and Markovian noise,
+    providing a broad toolkit for RL researchers.
+  </p>
+  <p>
+    The following example uses the Robbins–Monro algorithm to estimate the
+    root of \(M(\theta) = \mathbb{E}[X] - 0.5\) where \(X\) follows a
+    Bernoulli distribution with unknown mean 0.7.  The algorithm draws
+    samples from the distribution, computes the deviation from 0.5 and
+    updates \(\theta\).  We compare the running estimate with the true
+    mean to illustrate convergence despite observation noise.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+np.random.seed(0)
+theta = 0.0
+step_sizes = 1.0 / (np.arange(1, 201))
+true_mean = 0.7
+history = []
+for n, a in enumerate(step_sizes):
+    # sample from Bernoulli(0.7)
+    sample = np.random.binomial(1, true_mean)
+    # Robbins–Monro update to solve E[X] = 0.5
+    theta = theta - a * (sample - 0.5)
+    history.append(theta)
+
+print("Final estimate:", theta)
+  </code></pre>
+
+  <h2>34.2 Polyak–Ruppert Averaging</h2>
+  <p>
+    Polyak and Ruppert observed that averaging the iterates of a stochastic
+    approximation algorithm can improve convergence rates and reduce
+    variance.  Given iterates \(\{\theta_n\}\), the averaged estimate
+    \(\bar{\theta}_n = \frac{1}{n}\sum_{i=1}^n \theta_i\) converges to
+    \(\theta^\*\) under the same step size conditions as Robbins–Monro and
+    achieves asymptotically optimal variance【776680723656089†L241-L276】.  In
+    practice, one can maintain a running average of the parameters to
+    stabilise temporal‑difference learning or policy gradient methods.
+  </p>
+  <p>
+    Averaging has two main benefits.  First, it smooths out the noise
+    inherent in stochastic updates, producing a more stable trajectory.
+    Second, it allows the use of larger constant step sizes without
+    sacrificing asymptotic accuracy, thereby accelerating initial learning.
+    Polyak–Ruppert averaging has been widely adopted in RL algorithms
+    ranging from TD learning to actor–critic architectures.
+  </p>
+  <p>
+    The code below extends the previous root‑finding example by computing
+    the running average of the iterates.  We observe that the averaged
+    estimate converges more smoothly and with smaller variance than the
+    raw Robbins–Monro iterates.  Such averaging is particularly useful
+    when stochastic gradients are highly variable.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+np.random.seed(0)
+theta = 0.0
+average = 0.0
+true_mean = 0.7
+step_sizes = 0.05 * np.ones(200)  # constant step size
+
+for n, a in enumerate(step_sizes, start=1):
+    sample = np.random.binomial(1, true_mean)
+    theta = theta - a * (sample - 0.5)
+    # update running average
+    average = average + (theta - average) / n
+
+print("Final RM estimate:", theta)
+print("Final averaged estimate:", average)
+  </code></pre>
+
+  <h2>34.3 Fisher Information &amp; Natural Gradient</h2>
+  <p>
+    Gradient descent follows the direction of steepest decrease in the
+    Euclidean space of parameters.  However, the geometry of probability
+    distributions is not Euclidean: small changes in parameters can have
+    vastly different effects on the output distribution.  Amari’s natural
+    gradient addresses this by endowing the parameter space with the
+    Fisher information matrix as a Riemannian metric.  The steepest descent
+    direction is given by \(-G^{-1} \nabla_\theta L(\theta)\), where
+    \(G\) is the Fisher information matrix【977144354469767†L110-L118】.  This
+    pre‑conditioned update ensures that equal step sizes correspond to
+    equal changes in the distribution, leading to more efficient
+    optimisation.
+  </p>
+  <p>
+    In reinforcement learning, the natural gradient has been applied to
+    policy optimisation.  The policy gradient theorem relates the gradient
+    of the expected return to the gradient of the log policy.  Using the
+    Fisher information of the policy distribution, natural policy gradient
+    methods rescale the gradient to account for parameter sensitivity.
+    Algorithms such as Natural Policy Gradient (NPG), Natural Actor–Critic
+    and Trust Region Policy Optimisation (TRPO) exploit this idea to
+    improve convergence and stability.
+  </p>
+  <p>
+    The following code sketches a simple natural gradient update for a
+    Bernoulli policy in a one‑state bandit.  We parameterise the policy
+    with a logistic function \(\pi(\theta) = \sigma(\theta)\).  The Fisher
+    information for a Bernoulli distribution with probability \(p\) is
+    \(G = 1/(p(1-p))\).  The natural gradient scales the vanilla gradient
+    by \(1/G\).  Although simplistic, this example illustrates how
+    preconditioning the gradient can lead to more stable updates.
+  </p>
+  <pre><code class="language-python">import numpy as np
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+# reward probabilities for action 1 and 0
+p1, p0 = 0.8, 0.2
+
+theta = 0.0
+alpha = 0.1
+for step in range(50):
+    # compute policy probabilities
+    pi = sigmoid(theta)
+    # sample an action
+    a = np.random.rand() < pi
+    # observe reward
+    r = (p1 if a else p0)
+    # policy gradient: grad = (r - baseline) * derivative of log policy
+    baseline = 0.5  # simple baseline
+    grad = (r - baseline) * (a - pi)
+    # Fisher information for Bernoulli
+    G = 1.0 / (pi * (1 - pi))
+    # natural gradient update
+    theta += alpha * grad / G
+print("Learned parameter:", theta)
+  </code></pre>
+
+  <h2>34.4 Trust‑Region Connections</h2>
+  <p>
+    The natural gradient can be viewed as the first step of a trust‑region
+    method in the information geometry of probability distributions.  In
+    trust‑region policy optimisation, one maximises a surrogate objective
+    subject to a constraint on the Kullback–Leibler divergence between the
+    new and old policies.  This constraint defines a “trust region” in
+    which the linear approximation of the objective is accurate.  When the
+    constraint is small, the resulting update direction coincides with the
+    natural gradient.  In fact, TRPO computes a natural gradient step and
+    scales it to satisfy the KL bound【476298955389460†L739-L792】.
+  </p>
+  <p>
+    The KL constraint prevents the policy from changing too drastically,
+    avoiding large policy updates that could lead to performance collapse.
+    Natural gradients enforce an infinitesimal trust region via the Fisher
+    metric, while TRPO and its variants consider a finite step with a
+    quadratic approximation to the KL divergence.  This connection
+    elucidates why natural gradient methods are effective: they follow the
+    steepest descent direction in the correct geometry and implicitly
+    regularise the update to remain within a safe region of the parameter
+    space.
+  </p>
+  <p>
+    A simple trust‑region update can be implemented by computing the
+    natural gradient direction and then performing a line search to ensure
+    that the KL divergence between successive policies does not exceed a
+    target threshold.  In practice, such procedures are used in TRPO and
+    proximate algorithms like PPO to stabilise policy updates while
+    maintaining computational efficiency.
+  </p>
+
+  <footer>
+    <strong>Sources</strong><br>
+    The Robbins–Monro algorithm updates \(\theta_n\) using stochastic
+    observations and converges under appropriate step sizes【776680723656089†L160-L179】.
+    Polyak–Ruppert averaging yields asymptotically optimal variance and
+    stability【776680723656089†L241-L276】.  Amari’s natural gradient uses the
+    inverse Fisher information to define the steepest descent direction【977144354469767†L110-L118】.
+    Trust‑region methods such as TRPO implement the natural gradient with
+    a KL‑divergence constraint【476298955389460†L739-L792】.
+  </footer>
+</body>
+</html>
