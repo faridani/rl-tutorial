@@ -279,6 +279,19 @@ The following two lessons should prepare you for almost all of the math that you
 * Open Problems & Trends
 * Community & Conferences
 
+# Part XI - Advanced Topics 
+## Chapter 37. Off‑Policy Evaluation (OPE) [visit lesson](part-11/off-policy-eval.html)
+* Big Picture
+* Mathematical Preliminaries
+* What is Off‑Policy Evaluation?
+* Methods at a Glance
+* Terms & Notation (Quick Reference)
+* Uncertainty, CIs, and Safety
+* Worked Example (Two Parts)
+* Python: From Data to Estimates
+* Practice‑Oriented Checklist
+* Appendix: Derivations in Brief
+
 # Future Chapters 
 
 * Q-Learning, SARSA, Double Q-Learning Lab [lab and tutorial](q-learning-lab.html)
