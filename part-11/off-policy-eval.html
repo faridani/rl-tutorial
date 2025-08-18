@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Off‑Policy Evaluation (OPE) — An Advanced, Math‑Friendly Guide</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Fonts (elegant serif + humanist sans) -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <!-- MathJax for LaTeX -->
+  <script>
+    window.MathJax = {
+      tex: {inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$','$$'], ['\\[','\\]']]},
+      svg: {fontCache: 'global'}
+    };
+  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+  <style>
+    :root {
+      --bg: #ffffff;
+      --fg: #0f172a;         /* slate-900 */
+      --muted: #475569;      /* slate-600 */
+      --accent: #0ea5e9;     /* sky-500 */
+      --soft: #f8fafc;       /* slate-50 */
+      --code: #0b1021;       /* deep indigo for code */
+      --code-bg: #f5f7fb;
+      --border: #e2e8f0;     /* slate-200 */
+      --shadow: 0 2px 28px rgba(2, 6, 23, 0.06);
+    }
+    html, body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: "Source Serif 4", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+      font-size: 18px;
+      line-height: 1.7;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      padding: 56px 20px 28px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .container {
+      max-width: 1120px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 48px;
+      padding: 24px 20px 80px 20px;
+    }
+    h1, h2, h3, h4 {
+      font-family: "Inter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+      margin: 1.6em 0 0.6em;
+    }
+    h1 { font-size: 44px; margin-top: 0; }
+    h2 { font-size: 28px; }
+    h3 { font-size: 22px; }
+    h4 { font-size: 18px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+    p, li { color: var(--fg); }
+    .lead {
+      font-size: 22px;
+      color: var(--muted);
+      max-width: 78ch;
+    }
+    .toc {
+      position: sticky;
+      top: 20px;
+      align-self: start;
+      background: var(--soft);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 18px;
+      box-shadow: var(--shadow);
+    }
+    .toc h4 { margin-top: 0; }
+    .toc a {
+      color: var(--muted);
+      text-decoration: none;
+      display: block;
+      padding: 6px 0;
+    }
+    .toc a:hover { color: var(--accent); }
+    a.anchor {
+      color: inherit;
+      text-decoration: none;
+    }
+    .block {
+      background: var(--soft);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 22px;
+      margin: 22px 0;
+      box-shadow: var(--shadow);
+    }
+    .callout {
+      border-left: 4px solid var(--accent);
+      background: #eef9ff;
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin: 22px 0;
+      color: #0b3a54;
+    }
+    code, pre, kbd, samp {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "JetBrains Mono", "Liberation Mono", monospace;
+      font-size: 0.92em;
+    }
+    pre {
+      background: var(--code-bg);
+      color: var(--code);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 16px;
+      overflow: auto;
+      box-shadow: var(--shadow);
+    }
+    .eqn {
+      background: #fff;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin: 16px 0;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 18px 0;
+      font-feature-settings: "tnum";
+    }
+    th, td {
+      border-bottom: 1px solid var(--border);
+      padding: 10px 8px;
+      text-align: left;
+    }
+    .foot {
+      font-size: 14px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      margin-top: 48px;
+      padding-top: 18px;
+    }
+    .tag {
+      display: inline-block;
+      font-size: 12px;
+      font-family: "Inter", ui-sans-serif, system-ui;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #0b3a54;
+      background: #e6f6ff;
+      border: 1px solid #bfe9ff;
+      border-radius: 999px;
+      padding: 3px 9px;
+      margin-right: 8px;
+    }
+    .small { font-size: 0.94em; color: var(--muted); }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    @media (max-width: 980px) {
+      .container { grid-template-columns: 1fr; }
+      .toc { position: static; }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="container" style="grid-template-columns: 1fr;">
+      <h1>Off‑Policy Evaluation (OPE)</h1>
+      <p class="lead">
+        A rigorous, math‑friendly introduction to estimating the expected performance of a target policy using data collected under a different behavior policy — without deploying the target policy online.
+      </p>
+      <p class="small">Audience: advanced math background (measure/probability/optimization), new to reinforcement learning.</p>
+    </div>
+  </header>
+
+  <div class="container">
+    <main>
+      <section id="overview">
+        <h2><a class="anchor" href="#overview">1. Big Picture</a></h2>
+        <div class="block">
+          <p><strong>Problem.</strong> We are given logged interaction data from a system controlled by a known or estimable behavior policy \( \beta \). We wish to estimate the value (expected return) of a different policy \( \pi \), <em>without</em> deploying \( \pi \).</p>
+          <div class="eqn">
+            \[
+              v^\pi \;=\; \mathbb{E}_{\tau \sim p^\pi}\!\left[\sum_{t=0}^{H-1}\gamma^t\, r_t\right]
+              \quad\text{but we only have}\quad \tau \sim p^\beta.
+            \]
+          </div>
+          <p>OPE is a change‑of‑measure problem with sequential structure. Methods trade off bias and variance via reweighting (importance sampling), modeling (\(\hat P,\hat r,\hat Q\)), or both (doubly robust).</p>
+        </div>
+
+        <div class="callout">
+          <span class="tag">Key Assumptions</span>
+          <ul>
+            <li><strong>Positivity/coverage.</strong> If \( \pi(a\mid s) > 0 \) then \( \beta(a\mid s) > 0 \). (Absolute continuity.)</li>
+            <li><strong>Sequential ignorability.</strong> Logged data contain sufficient state to render action assignment as‑if randomized by \( \beta \): rewards/transitions depend only on \((s_t,a_t)\), not on unobserved confounders.</li>
+            <li><strong>Stationary MDP (unless stated).</strong> Time‑homogeneous transitions and rewards.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="preliminaries">
+        <h2><a class="anchor" href="#preliminaries">2. Mathematical Preliminaries</a></h2>
+        <p>We adopt the finite‑horizon MDP \((\mathcal{S},\mathcal{A}, P, r, d_0, \gamma, H)\):</p>
+        <ul>
+          <li>States \(s_t \in \mathcal{S}\), actions \(a_t \in \mathcal{A}\).</li>
+          <li>Dynamics \( P(s_{t+1}\mid s_t,a_t) \), reward \( r_t = r(s_t,a_t,s_{t+1}) \) (possibly stochastic).</li>
+          <li>Initial distribution \(d_0\), discount \( \gamma \in [0,1] \), horizon \( H \) (possibly \( \infty \)).</li>
+          <li>Policy \( \pi(a\mid s) \) defines the controlled trajectory measure
+            \[
+              p^\pi(\tau) = d_0(s_0) \prod_{t=0}^{H-1} \pi(a_t\mid s_t)\, P(s_{t+1}\mid s_t,a_t).
+            \]
+          </li>
+        </ul>
+        <p>The return of a trajectory \( \tau \) is \( G(\tau) = \sum_{t=0}^{H-1}\gamma^t r_t \). The value is \( v^\pi = \mathbb{E}_{\tau\sim p^\pi}[G(\tau)] \).</p>
+      </section>
+
+      <section id="definition">
+        <h2><a class="anchor" href="#definition">3. What is Off‑Policy Evaluation?</a></h2>
+        <p>Given logged data \( D = \{\tau_i\}_{i=1}^n \) drawn under \( p^\beta \) and a target policy \( \pi \), estimate \( v^\pi \). This is counterfactual because we ask: “What would the return have been if we had followed \( \pi \) instead of \( \beta \)?”</p>
+        <div class="eqn">
+          <p><em>Change of measure (Radon–Nikodým):</em></p>
+          \[
+            v^\pi
+            = \mathbb{E}_{\tau\sim p^\beta}\!\left[\frac{p^\pi(\tau)}{p^\beta(\tau)} \, G(\tau)\right]
+            \quad\text{if}\quad p^\pi \ll p^\beta.
+          \]
+        </div>
+      </section>
+
+      <section id="methods">
+        <h2><a class="anchor" href="#methods">4. Methods at a Glance</a></h2>
+        <div class="grid-2">
+          <div class="block">
+            <h3>4.1 Importance Sampling (IS)</h3>
+            <p><strong>Trajectory IS.</strong> Define per‑time step ratios \( \rho_t = \frac{\pi(a_t\mid s_t)}{\beta(a_t\mid s_t)} \) and \( \rho_{0:H-1}=\prod_{t=0}^{H-1}\rho_t \). Then</p>
+            <div class="eqn">\[
+              \hat v_{\text{IS}} = \frac{1}{n}\sum_{i=1}^n \rho_{0:H-1}^{(i)}\, G(\tau_i)
+            \]</div>
+            <p>Unbiased, but variance can explode as \(H\) grows.</p>
+
+            <p><strong>Per‑Decision IS (PDIS).</strong> Moves the product inside the sum to reduce variance:</p>
+            <div class="eqn">\[
+              \hat v_{\text{PDIS}}
+              = \frac{1}{n}\sum_{i=1}^n \sum_{t=0}^{H-1}\gamma^t
+                \left(\prod_{u=0}^{t} \rho_u^{(i)} \right) r_t^{(i)}.
+            \]</div>
+
+            <p><strong>Weighted/Normalized IS (WIS/SNIS).</strong> Normalize weights to trade small bias for lower variance:</p>
+            <div class="eqn">\[
+              \hat v_{\text{WIS}}
+              = \sum_{i=1}^n \frac{\rho_{0:H-1}^{(i)}}{\sum_{j=1}^n \rho_{0:H-1}^{(j)}}\, G(\tau_i).
+            \]</div>
+
+            <p class="small">Practical: weight clipping, truncation (e.g., V‑trace), or marginalized IS to stabilize estimates.</p>
+          </div>
+
+          <div class="block">
+            <h3>4.2 Direct Methods (DM)</h3>
+            <p>Fit a model and “simulate” \( \pi \) offline.</p>
+            <ul>
+              <li><strong>Model‑based:</strong> learn \( \hat P(s'\mid s,a) \), \( \hat r(s,a) \), then roll out \( \pi \) in the learned MDP.</li>
+              <li><strong>Fitted Q Evaluation (FQE):</strong> learn \( \hat Q^\pi \) by minimizing the Bellman error under \( \pi \):
+              \[
+                \hat Q^\pi \approx \arg\min_Q \mathbb{E}_{(s,a,r,s')\sim D}
+                \Big(Q(s,a) - [r + \gamma \,\mathbb{E}_{a'\sim \pi(\cdot\mid s')} Q(s',a')]\Big)^2.
+              \]
+              Then \( v^\pi \approx \mathbb{E}_{s_0\sim d_0}\big[\mathbb{E}_{a\sim \pi(\cdot\mid s_0)} \hat Q^\pi(s_0,a)\big]. \)</li>
+            </ul>
+            <p>Low variance but potentially biased if the function class is misspecified.</p>
+          </div>
+
+          <div class="block">
+            <h3>4.3 Doubly Robust (DR)</h3>
+            <p>Combines IS and DM to be consistent if <em>either</em> the model is correct <em>or</em> importance ratios are correct.</p>
+            <div class="eqn">\[
+            \hat v_{\text{DR}}
+            = \frac{1}{n}\sum_{i=1}^n\!\left[
+              \hat V(s^{(i)}_0)
+              + \sum_{t=0}^{H-1}\gamma^t
+                \!\left(\prod_{u=0}^{t}\rho^{(i)}_u\right)
+                \big( r^{(i)}_t - \hat Q(s^{(i)}_t,a^{(i)}_t)
+                    + \gamma\,\hat V(s^{(i)}_{t+1})\big)
+            \right],
+            \quad \hat V(s)=\mathbb{E}_{a\sim\pi}\hat Q(s,a).
+            \]</div>
+            <p>Variants: <em>Weighted DR</em>, <em>More Robust DR</em>, <em>MAGIC</em> (a model‑and‑guided IS combination that optimally weights estimators).</p>
+          </div>
+
+          <div class="block">
+            <h3>4.4 Specialized &amp; Modern Approaches</h3>
+            <ul>
+              <li><strong>Marginalized/Density‑ratio methods:</strong> learn state‑action occupancy ratios \( w_t(s,a) \approx \frac{d_t^\pi(s,a)}{d_t^\beta(s,a)} \) to avoid products of per‑step ratios.</li>
+              <li><strong>Continuous actions:</strong> use value modeling (FQE) or density‑ratio estimation in RKHS/NNs; avoid naive IS with density ratios over \(\mathbb{R}^d\).</li>
+              <li><strong>High‑Confidence OPE (HCOPE):</strong> concentration‑based lower bounds to ensure safe deployment.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="terms">
+        <h2><a class="anchor" href="#terms">5. Terms & Notation (Quick Reference)</a></h2>
+        <table>
+          <thead><tr><th>Symbol</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td>\( \pi(a\mid s) \)</td><td>Target policy to be evaluated.</td></tr>
+            <tr><td>\( \beta(a\mid s) \)</td><td>Behavior (logging) policy that generated data.</td></tr>
+            <tr><td>\( v^\pi \)</td><td>Expected discounted return under \( \pi \).</td></tr>
+            <tr><td>\( \rho_t \)</td><td>Per‑step importance ratio \( \pi(a_t\mid s_t)/\beta(a_t\mid s_t) \).</td></tr>
+            <tr><td>\( H,\gamma \)</td><td>Horizon and discount factor.</td></tr>
+            <tr><td>\( Q^\pi, V^\pi \)</td><td>Action‑value and state‑value functions under \( \pi \).</td></tr>
+            <tr><td>\( d_t^\pi \)</td><td>State‑action occupancy at time \(t\) under \( \pi \).</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="ci">
+        <h2><a class="anchor" href="#ci">6. Uncertainty, CIs, and Safety</a></h2>
+        <ul>
+          <li><strong>Bootstrap CIs.</strong> Resample trajectories with replacement; recompute estimator; form percentile or BCa intervals.</li>
+          <li><strong>Asymptotic normality.</strong> For stabilized estimators (e.g., WIS, DR with clipping) one can use sandwich variance estimates.</li>
+          <li><strong>HCOPE.</strong> Use concentration (Hoeffding/Azuma/Freedman/Empirical‑Bernstein) plus importance weights to produce conservative lower bounds for safe policy improvement.</li>
+        </ul>
+      </section>
+
+      <section id="example">
+        <h2><a class="anchor" href="#example">7. Worked Example (Two Parts)</a></h2>
+
+        <h3>7.1 Mini Contextual Bandit</h3>
+        <p>Horizon \(H=1\). With contexts \(x\), behavior \(\beta\) logs \((x,a,r)\). Target policy \(\pi\). The estimators reduce to:</p>
+        <ul>
+          <li><strong>IPS:</strong> \( \hat v = \frac{1}{n}\sum_i \frac{\pi(a_i\mid x_i)}{\beta(a_i\mid x_i)} r_i \).</li>
+          <li><strong>SNIPS:</strong> normalize the weights.</li>
+          <li><strong>DR:</strong> combine a reward regressor \( \hat r(x,a) \) with IPS.</li>
+        </ul>
+
+        <h3>7.2 Small Episodic MDP (Chain)</h3>
+        <p>States \( \{0,1,2,3,4\} \), actions \( \{\text{L}, \text{R}\} \). Moving right increases state index; reward \(+1\) only at terminal state \(4\). Behavior \(\beta\) prefers L; target \(\pi\) prefers R. We compare IS/PDIS/WIS, FQE, and DR.</p>
+      </section>
+
+      <section id="python">
+        <h2><a class="anchor" href="#python">8. Python: From Data to Estimates</a></h2>
+        <p class="small">The snippets below are ready to copy into a notebook. Dependencies used sparingly: <code>numpy</code>, optionally <code>scikit-learn</code> for linear models. You can replace those with your preferred libraries.</p>
+
+        <h3>8.1 Utilities & Synthetic Data</h3>
+<pre><code class="language-python">import numpy as np
+from dataclasses import dataclass
+from typing import Callable, Dict, Tuple, List, Optional
+
+# ---------- Data containers ----------
+@dataclass
+class Trajectory:
+    states: np.ndarray      # shape: (T+1, d_s)
+    actions: np.ndarray     # shape: (T,)
+    rewards: np.ndarray     # shape: (T,)
+    beh_probs: np.ndarray   # shape: (T,)  (beta(a_t|s_t))
+    dones: np.ndarray       # shape: (T,)  (1 if terminal after step t else 0)
+
+@dataclass
+class Dataset:
+    trajs: List[Trajectory]
+    gamma: float
+    horizon: int
+
+# ---------- Simple chain MDP simulator ----------
+class ChainMDP:
+    """
+    States: 0..N (N is terminal). Actions: 0=L, 1=R.
+    Reward: +1 upon entering state N, else 0. Episode ends at state N or after H steps.
+    """
+    def __init__(self, N=4, H=6, p_slip=0.0, seed=0):
+        self.N = N; self.H = H; self.p_slip = p_slip
+        self.rng = np.random.default_rng(seed)
+
+    def reset(self):
+        return 0
+
+    def step(self, s, a):
+        # Slip: action flipped with small prob
+        if self.rng.random() &lt; self.p_slip:
+            a = 1 - a
+        s_next = np.clip(s + (1 if a==1 else -1), 0, self.N)
+        r = 1.0 if s_next == self.N else 0.0
+        done = (s_next == self.N)
+        return s_next, r, done
+
+    def rollout(self, policy: Callable[[int], Tuple[int, float]]):
+        s = self.reset()
+        states = [s]; actions=[]; rewards=[]; beh_probs=[]; dones=[]
+        for t in range(self.H):
+            a, p = policy(s)  # returns chosen action and its prob under the policy
+            s_next, r, done = self.step(s, a)
+            states.append(s_next)
+            actions.append(a); rewards.append(r); beh_probs.append(p); dones.append(int(done))
+            s = s_next
+            if done: break
+        return Trajectory(np.array(states)[:,None], np.array(actions), np.array(rewards),
+                          np.array(beh_probs), np.array(dones))
+
+def make_policies(beta_bias=0.65, pi_bias=0.8):
+    """
+    beta: prefers Left with beta_bias
+    pi: prefers Right with pi_bias
+    Return callables for simulator: policy(s) -> (action, prob_of_chosen_action)
+    And density functions for evaluation: pi_prob(a|s), beta_prob(a|s)
+    """
+    def beta_policy_callable(s):
+        # action 0=L with prob beta_bias, 1=R otherwise
+        probs = np.array([beta_bias, 1-beta_bias])
+        a = int(np.random.random() &gt; probs[0])
+        return a, probs[a]
+    def pi_policy_callable(s):
+        probs = np.array([1-pi_bias, pi_bias])
+        a = int(np.random.random() &gt; probs[0])
+        return a, probs[a]
+    def beta_prob(a, s):  # s-agnostic here
+        return beta_bias if a==0 else (1-beta_bias)
+    def pi_prob(a, s):
+        return (1-pi_bias) if a==0 else pi_bias
+    return beta_policy_callable, pi_policy_callable, beta_prob, pi_prob
+
+def collect_dataset(env: ChainMDP, behavior_callable, n_trajs=200):
+    trajs = [env.rollout(behavior_callable) for _ in range(n_trajs)]
+    return Dataset(trajs=trajs, gamma=0.99, horizon=env.H)
+
+# Example usage (uncomment to simulate):
+# env = ChainMDP(N=4, H=6, p_slip=0.05, seed=42)
+# beta_call, pi_call, beta_prob, pi_prob = make_policies(beta_bias=0.65, pi_bias=0.85)
+# data = collect_dataset(env, beta_call, n_trajs=1000)
+</code></pre>
+
+        <h3>8.2 Importance Sampling Family</h3>
+<pre><code class="language-python">def per_step_ratio(traj: Trajectory, beta_prob, pi_prob):
+    # Compute rho_t = pi(a_t|s_t) / beta(a_t|s_t)
+    # Here states are 1D; generalize as needed.
+    s = traj.states[:-1, 0]
+    a = traj.actions
+    return np.array([pi_prob(a_t, s_t) / beta_prob(a_t, s_t) for a_t, s_t in zip(a, s)])
+
+def trajectory_is(dataset: Dataset, beta_prob, pi_prob):
+    vals = []
+    for tr in dataset.trajs:
+        rhos = per_step_ratio(tr, beta_prob, pi_prob)
+        G = np.sum((dataset.gamma ** np.arange(len(tr.rewards))) * tr.rewards)
+        vals.append(np.prod(rhos) * G)
+    return np.mean(vals)
+
+def per_decision_is(dataset: Dataset, beta_prob, pi_prob):
+    vals = []
+    for tr in dataset.trajs:
+        rhos = per_step_ratio(tr, beta_prob, pi_prob)
+        cum = 0.0
+        w = 1.0
+        for t, r_t in enumerate(tr.rewards):
+            w *= rhos[t]
+            cum += (dataset.gamma ** t) * w * r_t
+        vals.append(cum)
+    return np.mean(vals)
+
+def weighted_is(dataset: Dataset, beta_prob, pi_prob):
+    weights, returns = [], []
+    for tr in dataset.trajs:
+        rhos = per_step_ratio(tr, beta_prob, pi_prob)
+        w = np.prod(rhos)
+        G = np.sum((dataset.gamma ** np.arange(len(tr.rewards))) * tr.rewards)
+        weights.append(w); returns.append(G)
+    W = np.sum(weights)
+    if W == 0: return 0.0
+    weights = np.array(weights) / W
+    returns = np.array(returns)
+    return np.sum(weights * returns)
+
+def truncated_is(dataset: Dataset, beta_prob, pi_prob, c=10.0):
+    """Clip cumulative weights to [0,c] to reduce variance (biased)."""
+    vals = []
+    for tr in dataset.trajs:
+        rhos = per_step_ratio(tr, beta_prob, pi_prob)
+        w = min(np.prod(rhos), c)
+        G = np.sum((dataset.gamma ** np.arange(len(tr.rewards))) * tr.rewards)
+        vals.append(w * G)
+    return np.mean(vals)
+</code></pre>
+
+        <h3>8.3 Fitted Q Evaluation (Linear‑Ridge Version)</h3>
+        <p>We implement FQE with a linear function class \( Q(s,a) = \phi(s,a)^\top w \) and ridge regression at each iteration.</p>
+<pre><code class="language-python">def feature_map(sa):
+    """
+    Simple polynomial features for 1D state and binary action.
+    sa: array of shape (n, 2) with columns [s, a]
+    """
+    s = sa[:, 0]
+    a = sa[:, 1]
+    return np.stack([np.ones_like(s), s, a, s*a, s**2, a*s**2], axis=1).astype(float)
+
+def fqe_linear(dataset: Dataset,
+               pi_prob: Callable[[int,int], float],
+               gamma: float = None,
+               n_iters: int = 50,
+               l2: float = 1e-3):
+    if gamma is None:
+        gamma = dataset.gamma
+
+    # Collect one big table of (s,a,r,s',done)
+    S=[]; A=[]; R=[]; Sp=[]; D=[]
+    for tr in dataset.trajs:
+        T = len(tr.actions)
+        S.append(tr.states[:-1,0]); A.append(tr.actions)
+        R.append(tr.rewards)
+        Sp.append(tr.states[1:,0]); D.append(tr.dones)
+    S = np.concatenate(S); A = np.concatenate(A)
+    R = np.concatenate(R); Sp = np.concatenate(Sp); D = np.concatenate(D)
+
+    # Design matrix
+    Phi = feature_map(np.c_[S, A])
+
+    # Initialize w=0
+    w = np.zeros(Phi.shape[1])
+
+    for _ in range(n_iters):
+        # Compute V_hat(s') = E_{a'~pi}[Q(s',a')]
+        # Here action space is {0,1}
+        sa0 = np.c_[Sp, np.zeros_like(Sp)]
+        sa1 = np.c_[Sp, np.ones_like(Sp)]
+        Q0 = feature_map(sa0) @ w
+        Q1 = feature_map(sa1) @ w
+        pi1 = np.array([pi_prob(1, s_) for s_ in Sp])
+        pi0 = 1.0 - pi1
+        V_next = pi0 * Q0 + pi1 * Q1
+
+        y = R + gamma * (1 - D) * V_next
+
+        # Ridge regression solve: w = (Phi^T Phi + l2 I)^(-1) Phi^T y
+        A_mat = Phi.T @ Phi + l2 * np.eye(Phi.shape[1])
+        b_vec = Phi.T @ y
+        w = np.linalg.solve(A_mat, b_vec)
+
+    # Estimate v^pi via initial states (approximate d0 by starts of trajectories)
+    s0 = np.array([tr.states[0,0] for tr in dataset.trajs])
+    sa0 = np.c_[s0, np.zeros_like(s0)]
+    sa1 = np.c_[s0, np.ones_like(s0)]
+    Q0 = feature_map(sa0) @ w
+    Q1 = feature_map(sa1) @ w
+    pi1_0 = np.array([pi_prob(1, s_) for s_ in s0])
+    pi0_0 = 1.0 - pi1_0
+    v_est = np.mean(pi0_0 * Q0 + pi1_0 * Q1)
+    return v_est, w
+</code></pre>
+
+        <h3>8.4 Step‑wise Doubly Robust (DR)</h3>
+<pre><code class="language-python">def dr_estimator(dataset: Dataset,
+                 beta_prob, pi_prob,
+                 Q_hat: Callable[[np.ndarray, np.ndarray], np.ndarray]):
+    """
+    Q_hat(S, A) -> approximate Q(s,a) for vectorized inputs.
+    Assumes discrete actions {0,1}. Extend as needed.
+    """
+    vals = []
+    gamma = dataset.gamma
+    for tr in dataset.trajs:
+        S = tr.states[:,0]
+        A = tr.actions
+        R = tr.rewards
+        D = tr.dones
+        T = len(A)
+        # Precompute importance ratios
+        rhos = np.array([pi_prob(a, s)/beta_prob(a, s) for a, s in zip(A, S[:-1])])
+        # Stepwise products
+        cum = 0.0
+        w = 1.0
+        # Need V_hat(s) = E_{a~pi} Q_hat(s,a)
+        def V_hat(s):
+            q0 = Q_hat(np.array([s]), np.array([0]))[0]
+            q1 = Q_hat(np.array([s]), np.array([1]))[0]
+            p1 = pi_prob(1, s)
+            return (1-p1)*q0 + p1*q1
+        baseline = V_hat(S[0])
+        for t in range(T):
+            w *= rhos[t]
+            q_sa = Q_hat(np.array([S[t]]), np.array([A[t]]))[0]
+            v_next = 0.0 if D[t]==1 else V_hat(S[t+1])
+            term = (R[t] - q_sa + gamma * v_next)
+            cum += (gamma**t) * w * term
+        vals.append(baseline + cum)
+    return np.mean(vals)
+
+# Helper to wrap the learned linear-Q from FQE:
+def Q_from_linear_fqe(w):
+    def Q_hat(S_vec, A_vec):
+        sa = np.c_[S_vec, A_vec]
+        return feature_map(sa) @ w
+    return Q_hat
+</code></pre>
+
+        <h3>8.5 Bootstrap Confidence Intervals</h3>
+<pre><code class="language-python">def bootstrap_trajectories(dataset: Dataset, rng=None):
+    if rng is None:
+        rng = np.random.default_rng()
+    idx = rng.integers(0, len(dataset.trajs), size=len(dataset.trajs))
+    ds = Dataset(trajs=[dataset.trajs[i] for i in idx], gamma=dataset.gamma, horizon=dataset.horizon)
+    return ds
+
+def bootstrap_ci(dataset: Dataset, estimator_fn, B=500, alpha=0.05, rng=None):
+    if rng is None:
+        rng = np.random.default_rng()
+    samples = []
+    for _ in range(B):
+        ds = bootstrap_trajectories(dataset, rng)
+        samples.append(estimator_fn(ds))
+    samples = np.sort(np.array(samples))
+    lo = np.quantile(samples, alpha/2)
+    hi = np.quantile(samples, 1 - alpha/2)
+    return float(np.mean(samples)), float(lo), float(hi)
+
+# Example glue combining everything (uncomment to run in a notebook):
+# env = ChainMDP(N=4, H=6, p_slip=0.05, seed=7)
+# beta_call, pi_call, beta_prob, pi_prob = make_policies(beta_bias=0.65, pi_bias=0.85)
+# data = collect_dataset(env, beta_call, n_trajs=1000)
+#
+# v_is  = trajectory_is(data, beta_prob, pi_prob)
+# v_pdis = per_decision_is(data, beta_prob, pi_prob)
+# v_wis = weighted_is(data, beta_prob, pi_prob)
+#
+# v_fqe, w = fqe_linear(data, pi_prob, gamma=data.gamma, n_iters=60, l2=1e-3)
+# Qhat = Q_from_linear_fqe(w)
+# v_dr = dr_estimator(data, beta_prob, pi_prob, Qhat)
+#
+# print("IS:", v_is, "PDIS:", v_pdis, "WIS:", v_wis)
+# print("FQE:", v_fqe, "DR:", v_dr)
+#
+# # Bootstrap CI for DR:
+# est_fn = lambda ds: dr_estimator(ds, beta_prob, pi_prob, Qhat)
+# mean_b, lo, hi = bootstrap_ci(data, est_fn, B=300, alpha=0.05)
+# print(f"DR bootstrap 95% CI: mean={mean_b:.4f}, [{lo:.4f}, {hi:.4f}]")
+</code></pre>
+
+        <h3>8.6 Contextual Bandit OPE (IPS, SNIPS, DR)</h3>
+<pre><code class="language-python"># Minimal contextual bandit example
+# x in R^d, actions in {0,1}, reward r in [0,1]
+# Assume we have arrays: X (n,d), A (n,), R (n,), and behavior propensities p_beta (n,)
+
+def ips(X, A, R, p_beta, pi_prob_fn):
+    weights = np.array([pi_prob_fn(a,x)/pb for x,a,pb in zip(X,A,p_beta)])
+    return float(np.mean(weights * R))
+
+def snips(X, A, R, p_beta, pi_prob_fn):
+    w = np.array([pi_prob_fn(a,x)/pb for x,a,pb in zip(X,A,p_beta)])
+    W = w.sum()
+    if W==0: return 0.0
+    return float((w @ R) / W)
+
+def dr_bandit(X, A, R, p_beta, pi_prob_fn, reward_model):
+    # reward_model(x,a) predicts E[r|x,a]
+    g = np.array([reward_model(x,a) for x,a in zip(X,A)])
+    pi_ax = np.array([pi_prob_fn(1,x) for x in X])  # if binary; generalize as needed
+    mu_pi = pi_ax * np.array([reward_model(x,1) for x in X]) \
+          + (1-pi_ax) * np.array([reward_model(x,0) for x in X])
+    w = np.array([pi_prob_fn(a,x)/pb for x,a,pb in zip(X,A,p_beta)])
+    return float(np.mean(mu_pi + w * (R - g)))
+</code></pre>
+
+        <h3>8.7 Practical Tips (in code)</h3>
+<pre><code class="language-python"># Weight truncation: guard against huge ratios
+def clip_ratio(x, c=20.0):
+    return np.minimum(x, c)
+
+# Normalized step-wise weights (for PDIS variants)
+def pdis_normalized(dataset: Dataset, beta_prob, pi_prob, eps=1e-12):
+    vals = []
+    for tr in dataset.trajs:
+        rhos = per_step_ratio(tr, beta_prob, pi_prob)
+        # normalize partial products at each t
+        partial_products = np.cumprod(rhos)
+        # scale so that average partial product across dataset would be ~1 (approx here per-trajectory)
+        norm = np.maximum(np.mean(partial_products), eps)
+        partial_products = partial_products / norm
+        cum = np.sum([(dataset.gamma ** t) * partial_products[t] * tr.rewards[t]
+                      for t in range(len(tr.rewards))])
+        vals.append(cum)
+    return np.mean(vals)
+</code></pre>
+      </section>
+
+      <section id="practice">
+        <h2><a class="anchor" href="#practice">9. Practice‑Oriented Checklist</a></h2>
+        <ul>
+          <li><strong>Log propensities.</strong> Record \( \beta(a_t\mid s_t) \) at data collection time whenever possible.</li>
+          <li><strong>Check overlap.</strong> Estimate how often \( \pi \) chooses actions rarely seen under \( \beta \); consider restricting \( \pi \) or collecting targeted data.</li>
+          <li><strong>Stabilize weights.</strong> Use per‑decision IS, normalization, and clipping/truncation as needed; report both raw and stabilized estimates.</li>
+          <li><strong>Model carefully.</strong> For FQE, start with simple, stable function classes before scaling to deep networks; monitor Bellman errors on a holdout set.</li>
+          <li><strong>Quantify uncertainty.</strong> Bootstrap (trajectory‑level) or concentration bounds; report CIs and, for deployment gates, high‑confidence lower bounds.</li>
+          <li><strong>Non‑stationarity & confounding.</strong> Re‑assess assumptions; if key covariates are missing, OPE may be biased regardless of the estimator.</li>
+        </ul>
+      </section>
+
+      <section id="appendix">
+        <h2><a class="anchor" href="#appendix">10. Appendix: Derivations in Brief</a></h2>
+        <h3>A.1 IS via Radon–Nikodým</h3>
+        <p>Assuming \( p^\pi \ll p^\beta \), change of measure yields
+        \( \mathbb{E}_{p^\pi}[g] = \mathbb{E}_{p^\beta}[\frac{\mathrm{d}p^\pi}{\mathrm{d}p^\beta} g] \).
+        For trajectory measures, densities factor over time, giving products of per‑step policy ratios; the transition kernels cancel.</p>
+
+        <h3>A.2 DR Unbiasedness (sketch)</h3>
+        <p>Let \( \Delta_t = r_t - Q(s_t,a_t) + \gamma V(s_{t+1}) \). If \(Q\) is equal to \(Q^\pi\), then
+        \( \mathbb{E}[\Delta_t \mid s_t,a_t] = 0 \); hence the IS‑weighted sum has mean zero. If \(Q\) is misspecified but the IS ratios are correct, the estimator is still consistent by change of measure.</p>
+
+        <h3>A.3 Occupancy Ratios</h3>
+        <p>Define \( w_t(s,a) = d_t^\pi(s,a) / d_t^\beta(s,a) \). Then \( v^\pi = \sum_t \gamma^t \mathbb{E}_{(s,a)\sim d_t^\beta}[w_t(s,a) r(s,a)] \).
+        Learning \( w_t \) avoids products \( \prod_{u\le t}\rho_u \) but requires solving a (dual) moment‑matching or Bellman‑flow constraint problem.</p>
+      </section>
+
+      <p class="foot">
+        © Off‑Policy Evaluation tutorial. This single HTML file is designed for direct viewing and copy‑pasting of code. No external compute is performed by this page.
+      </p>
+    </main>
+
+    <aside class="toc">
+      <h4>Contents</h4>
+      <a href="#overview">1. Big Picture</a>
+      <a href="#preliminaries">2. Preliminaries</a>
+      <a href="#definition">3. OPE Definition</a>
+      <a href="#methods">4. Methods at a Glance</a>
+      <a href="#terms">5. Terms &amp; Notation</a>
+      <a href="#ci">6. Uncertainty &amp; Safety</a>
+      <a href="#example">7. Worked Example</a>
+      <a href="#python">8. Python Code</a>
+      <a href="#practice">9. Practical Checklist</a>
+      <a href="#appendix">10. Appendix</a>
+    </aside>
+  </div>
+</body>
+</html>
