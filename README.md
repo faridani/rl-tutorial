@@ -340,3 +340,5 @@ The following two lessons should prepare you for almost all of the math that you
 
 * Q-Learning, SARSA, Double Q-Learning Lab [lab and tutorial](q-learning-lab.html)
 * Online tutorials worthy of your time [other-resources.html](other-resources.html)
+* The Complete Guide to Reinforcement Learning [book](The%20Complete%20Guide%20to%20Reinforcement%20Learning.md)
+
